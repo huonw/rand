@@ -221,17 +221,18 @@
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/rand/")]
-#![feature(core, os, path, io)]
+#![feature(core, os, old_path, old_io)]
 
-#![cfg_attr(test, feature(test, std_misc))]
+#![cfg_attr(test, feature(test))]
 
 extern crate core;
 #[cfg(test)] #[macro_use] extern crate log;
 
-use std::old_io::IoResult;
-use std::mem;
-use std::rc::Rc;
 use std::cell::RefCell;
+use std::marker;
+use std::mem;
+use std::old_io::IoResult;
+use std::rc::Rc;
 
 pub use os::OsRng;
 
@@ -403,7 +404,7 @@ pub trait Rng : Sized {
     ///                     .collect::<Vec<(f64, bool)>>());
     /// ```
     fn gen_iter<'a, T: Rand>(&'a mut self) -> Generator<'a, T, Self> {
-        Generator { rng: self }
+        Generator { rng: self, _marker: marker::PhantomData }
     }
 
     /// Generate a random value in the range [`low`, `high`).
@@ -514,6 +515,7 @@ pub trait Rng : Sized {
 /// This iterator is created via the `gen_iter` method on `Rng`.
 pub struct Generator<'a, T, R:'a> {
     rng: &'a mut R,
+    _marker: marker::PhantomData<fn() -> T>,
 }
 
 impl<'a, T: Rand, R: Rng> Iterator for Generator<'a, T, R> {
@@ -958,7 +960,7 @@ mod test {
     #[should_fail]
     fn test_gen_range_panic_usize() {
         let mut r = thread_rng();
-        r.gen_range(5us, 2us);
+        r.gen_range(5, 2);
     }
 
     #[test]
