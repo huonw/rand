@@ -10,8 +10,6 @@
 
 //! The normal and derived distributions.
 
-use core::num::Float;
-
 use {Rng, Rand, Open01};
 use distributions::{ziggurat, ziggurat_tables, Sample, IndependentSample};
 
@@ -28,7 +26,7 @@ use distributions::{ziggurat, ziggurat_tables, Sample, IndependentSample};
 /// Generate Normal Random
 /// Samples*](http://www.doornik.com/research/ziggurat.pdf). Nuffield
 /// College, Oxford
-#[derive(Copy)]
+#[derive(Clone, Copy)]
 pub struct StandardNormal(pub f64);
 
 impl Rand for StandardNormal {
@@ -83,7 +81,7 @@ impl Rand for StandardNormal {
 /// let v = normal.ind_sample(&mut rand::thread_rng());
 /// println!("{} is from a N(2, 9) distribution", v)
 /// ```
-#[derive(Copy)]
+#[derive(Clone, Copy)]
 pub struct Normal {
     mean: f64,
     std_dev: f64,
@@ -130,7 +128,7 @@ impl IndependentSample<f64> for Normal {
 /// let v = log_normal.ind_sample(&mut rand::thread_rng());
 /// println!("{} is from an ln N(2, 9) distribution", v)
 /// ```
-#[derive(Copy)]
+#[derive(Clone, Copy)]
 pub struct LogNormal {
     norm: Normal
 }
@@ -171,7 +169,7 @@ mod tests {
         }
     }
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_normal_invalid_sd() {
         Normal::new(10.0, -1.0);
     }
@@ -187,7 +185,7 @@ mod tests {
         }
     }
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_log_normal_invalid_sd() {
         LogNormal::new(10.0, -1.0);
     }
@@ -196,7 +194,6 @@ mod tests {
 #[cfg(test)]
 mod bench {
     extern crate test;
-    use std::prelude::v1::*;
     use self::test::Bencher;
     use std::mem::size_of;
     use distributions::{Sample};

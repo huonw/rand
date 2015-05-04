@@ -15,8 +15,6 @@
 use self::GammaRepr::*;
 use self::ChiSquaredRepr::*;
 
-use core::num::Float;
-
 use {Rng, Open01};
 use super::normal::StandardNormal;
 use super::{IndependentSample, Sample, Exp};
@@ -51,10 +49,12 @@ use super::{IndependentSample, Sample, Exp};
 /// for Generating Gamma Variables" *ACM Trans. Math. Softw.* 26, 3
 /// (September 2000),
 /// 363-372. DOI:[10.1145/358407.358414](http://doi.acm.org/10.1145/358407.358414)
+#[derive(Clone, Copy)]
 pub struct Gamma {
     repr: GammaRepr,
 }
 
+#[derive(Clone, Copy)]
 enum GammaRepr {
     Large(GammaLargeShape),
     One(Exp),
@@ -75,6 +75,7 @@ enum GammaRepr {
 ///
 /// See `Gamma` for sampling from a Gamma distribution with general
 /// shape parameters.
+#[derive(Clone, Copy)]
 struct GammaSmallShape {
     inv_shape: f64,
     large_shape: GammaLargeShape
@@ -84,6 +85,7 @@ struct GammaSmallShape {
 ///
 /// See `Gamma` for sampling from a Gamma distribution with general
 /// shape parameters.
+#[derive(Clone, Copy)]
 struct GammaLargeShape {
     scale: f64,
     c: f64,
@@ -192,10 +194,12 @@ impl IndependentSample<f64> for GammaLargeShape {
 /// let v = chi.ind_sample(&mut rand::thread_rng());
 /// println!("{} is from a χ²(11) distribution", v)
 /// ```
+#[derive(Clone, Copy)]
 pub struct ChiSquared {
     repr: ChiSquaredRepr,
 }
 
+#[derive(Clone, Copy)]
 enum ChiSquaredRepr {
     // k == 1, Gamma(alpha, ..) is particularly slow for alpha < 1,
     // e.g. when alpha = 1/2 as it would be for this case, so special-
@@ -248,6 +252,7 @@ impl IndependentSample<f64> for ChiSquared {
 /// let v = f.ind_sample(&mut rand::thread_rng());
 /// println!("{} is from an F(2, 32) distribution", v)
 /// ```
+#[derive(Clone, Copy)]
 pub struct FisherF {
     numer: ChiSquared,
     denom: ChiSquared,
@@ -291,6 +296,7 @@ impl IndependentSample<f64> for FisherF {
 /// let v = t.ind_sample(&mut rand::thread_rng());
 /// println!("{} is from a t(11) distribution", v)
 /// ```
+#[derive(Clone, Copy)]
 pub struct StudentT {
     chi: ChiSquared,
     dof: f64
@@ -350,7 +356,7 @@ mod test {
         }
     }
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_chi_squared_invalid_dof() {
         ChiSquared::new(-1.0);
     }
@@ -379,7 +385,6 @@ mod test {
 #[cfg(test)]
 mod bench {
     extern crate test;
-    use std::prelude::v1::*;
     use self::test::Bencher;
     use std::mem::size_of;
     use distributions::IndependentSample;

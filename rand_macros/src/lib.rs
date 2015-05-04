@@ -67,13 +67,14 @@ pub fn expand_deriving_rand(cx: &mut ExtCtxt,
         ),
         associated_types: Vec::new(),
     };
-    trait_def.expand(cx, mitem, item, |i| push(i))
+    trait_def.expand(cx, mitem, item, &mut |i| push(i))
 }
 
 fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> P<Expr> {
-    let rng = match substr.nonself_args {
-        [ref rng] => rng,
-        _ => cx.bug("Incorrect number of arguments to `rand` in `derive(Rand)`")
+    let rng = if substr.nonself_args.len() == 1 {
+        &substr.nonself_args[0]
+    } else {
+        cx.bug("Incorrect number of arguments to `rand` in `derive(Rand)`")
     };
     let rand_ident = vec!(
         cx.ident_of("rand"),

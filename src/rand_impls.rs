@@ -10,17 +10,15 @@
 
 //! The implementations of `Rand` for the built-in types.
 
-use core::prelude::*;
-use core::char;
-use core::isize;
-use core::usize;
+use std::char;
+use std::mem;
 
 use {Rand,Rng};
 
 impl Rand for isize {
     #[inline]
     fn rand<R: Rng>(rng: &mut R) -> isize {
-        if isize::BITS == 32 {
+        if mem::size_of::<isize>() == 4 {
             rng.gen::<i32>() as isize
         } else {
             rng.gen::<i64>() as isize
@@ -59,7 +57,7 @@ impl Rand for i64 {
 impl Rand for usize {
     #[inline]
     fn rand<R: Rng>(rng: &mut R) -> usize {
-        if usize::BITS == 32 {
+        if mem::size_of::<usize>() == 4 {
             rng.gen::<u32>() as usize
         } else {
             rng.gen::<u64>() as usize
@@ -141,7 +139,7 @@ impl Rand for char {
     #[inline]
     fn rand<R: Rng>(rng: &mut R) -> char {
         // a char is 21 bits
-        static CHAR_MASK: u32 = 0x001f_ffff;
+        const CHAR_MASK: u32 = 0x001f_ffff;
         loop {
             // Rejection sampling. About 0.2% of numbers with at most
             // 21-bits are invalid codepoints (surrogates), so this

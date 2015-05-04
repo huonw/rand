@@ -11,21 +11,20 @@
 //! A wrapper around another RNG that reseeds it after it
 //! generates a certain number of random bytes.
 
-use core::prelude::*;
+use std::default::Default;
 
 use {Rng, SeedableRng};
-use core::default::Default;
 
 /// How many bytes of entropy the underling RNG is allowed to generate
-/// before it is reseeded.
-static DEFAULT_GENERATION_THRESHOLD: usize = 32 * 1024;
+/// before it is reseeded
+const DEFAULT_GENERATION_THRESHOLD: u64 = 32 * 1024;
 
 /// A wrapper around any RNG which reseeds the underlying RNG after it
 /// has generated a certain number of random bytes.
 pub struct ReseedingRng<R, Rsdr> {
     rng: R,
-    generation_threshold: usize,
-    bytes_generated: usize,
+    generation_threshold: u64,
+    bytes_generated: u64,
     /// Controls the behaviour when reseeding the RNG.
     pub reseeder: Rsdr,
 }
@@ -38,7 +37,7 @@ impl<R: Rng, Rsdr: Reseeder<R>> ReseedingRng<R, Rsdr> {
     /// * `rng`: the random number generator to use.
     /// * `generation_threshold`: the number of bytes of entropy at which to reseed the RNG.
     /// * `reseeder`: the reseeding object to use.
-    pub fn new(rng: R, generation_threshold: usize, reseeder: Rsdr) -> ReseedingRng<R,Rsdr> {
+    pub fn new(rng: R, generation_threshold: u64, reseeder: Rsdr) -> ReseedingRng<R,Rsdr> {
         ReseedingRng {
             rng: rng,
             generation_threshold: generation_threshold,
@@ -73,7 +72,7 @@ impl<R: Rng, Rsdr: Reseeder<R>> Rng for ReseedingRng<R, Rsdr> {
 
     fn fill_bytes(&mut self, dest: &mut [u8]) {
         self.reseed_if_necessary();
-        self.bytes_generated += dest.len();
+        self.bytes_generated += dest.len() as u64;
         self.rng.fill_bytes(dest)
     }
 }
@@ -133,7 +132,7 @@ pub trait Reseeder<R> {
 
 /// Reseed an RNG using a `Default` instance. This reseeds by
 /// replacing the RNG with the result of a `Default::default` call.
-#[derive(Copy)]
+#[derive(Clone, Copy)]
 pub struct ReseedWithDefault;
 
 impl<R: Rng + Default> Reseeder<R> for ReseedWithDefault {
@@ -147,11 +146,9 @@ impl Default for ReseedWithDefault {
 
 #[cfg(test)]
 mod test {
-    use std::prelude::v1::*;
-
-    use core::iter::{order, repeat};
-    use super::{ReseedingRng, ReseedWithDefault};
     use std::default::Default;
+    use std::iter::{order, repeat};
+    use super::{ReseedingRng, ReseedWithDefault};
     use {SeedableRng, Rng};
 
     struct Counter {
@@ -210,11 +207,11 @@ mod test {
         assert_eq!(string1, string2);
     }
 
-    static FILL_BYTES_V_LEN: usize = 13579;
+    const FILL_BYTES_V_LEN: usize = 13579;
     #[test]
     fn test_rng_fill_bytes() {
         let mut v = repeat(0u8).take(FILL_BYTES_V_LEN).collect::<Vec<_>>();
-        ::test::rng().fill_bytes(v.as_mut_slice());
+        ::test::rng().fill_bytes(&mut v);
 
         // Sanity test: if we've gotten here, `fill_bytes` has not infinitely
         // recursed.

@@ -10,13 +10,30 @@
 
 //! Utilities for random number generation
 //!
-//! The key functions are `random()` and `Rng::gen()`. These are polymorphic
-//! and so can be used to generate any type that implements `Rand`. Type inference
+//! The key functions are `random()` and `Rng::gen()`. These are polymorphic and
+//! so can be used to generate any type that implements `Rand`. Type inference
 //! means that often a simple call to `rand::random()` or `rng.gen()` will
-//! suffice, but sometimes an annotation is required, e.g. `rand::random::<f64>()`.
+//! suffice, but sometimes an annotation is required, e.g.
+//! `rand::random::<f64>()`.
 //!
 //! See the `distributions` submodule for sampling random numbers from
 //! distributions like normal and exponential.
+//!
+//! # Usage
+//!
+//! This crate is [on crates.io](https://crates.io/crates/rand) and can be
+//! used by adding `rand` to the dependencies in your project's `Cargo.toml`.
+//!
+//! ```toml
+//! [dependencies]
+//! rand = "0.3"
+//! ```
+//!
+//! and this to your crate root:
+//!
+//! ```rust
+//! extern crate rand;
+//! ```
 //!
 //! # Thread-local RNG
 //!
@@ -31,7 +48,8 @@
 //!
 //! An application that requires an entropy source for cryptographic purposes
 //! must use `OsRng`, which reads randomness from the source that the operating
-//! system provides (e.g. `/dev/urandom` on Unixes or `CryptGenRandom()` on Windows).
+//! system provides (e.g. `/dev/urandom` on Unixes or `CryptGenRandom()` on
+//! Windows).
 //! The other random number generators provided by this module are not suitable
 //! for such purposes.
 //!
@@ -52,7 +70,7 @@
 //!     available, and use `/dev/urandom` fallback if not.  If an application
 //!     does not have `getrandom` and likely to be run soon after first booting,
 //!     or on a system with very few entropy sources, one should consider using
-//!     `/dev/random` via `ReaderRng`.
+//!     `/dev/random` via `ReadRng`.
 //! -   On some systems (e.g. FreeBSD, OpenBSD and Mac OS X) there is no
 //!     difference between the two sources. (Also note that, on some systems
 //!     e.g.  FreeBSD, both `/dev/random` and `/dev/urandom` may block once if
@@ -119,10 +137,10 @@
 //! This is a simulation of the [Monty Hall Problem][]:
 //!
 //! > Suppose you're on a game show, and you're given the choice of three doors:
-//! > Behind one door is a car; behind the others, goats. You pick a door, say No. 1,
-//! > and the host, who knows what's behind the doors, opens another door, say No. 3,
-//! > which has a goat. He then says to you, "Do you want to pick door No. 2?"
-//! > Is it to your advantage to switch your choice?
+//! > Behind one door is a car; behind the others, goats. You pick a door, say
+//! > No. 1, and the host, who knows what's behind the doors, opens another
+//! > door, say No. 3, which has a goat. He then says to you, "Do you want to
+//! > pick door No. 2?" Is it to your advantage to switch your choice?
 //!
 //! The rather unintuitive answer is that you will have a 2/3 chance of winning
 //! if you switch and a 1/3 chance of winning if you don't, so it's better to
@@ -143,7 +161,8 @@
 //! }
 //!
 //! // Run a single simulation of the Monty Hall problem.
-//! fn simulate<R: Rng>(random_door: &Range<usize>, rng: &mut R) -> SimulationResult {
+//! fn simulate<R: Rng>(random_door: &Range<u32>, rng: &mut R)
+//!                     -> SimulationResult {
 //!     let car = random_door.ind_sample(rng);
 //!
 //!     // This is our initial choice
@@ -163,18 +182,18 @@
 //!
 //! // Returns the door the game host opens given our choice and knowledge of
 //! // where the car is. The game host will never open the door with the car.
-//! fn game_host_open<R: Rng>(car: usize, choice: usize, rng: &mut R) -> usize {
+//! fn game_host_open<R: Rng>(car: u32, choice: u32, rng: &mut R) -> u32 {
 //!     let choices = free_doors(&[car, choice]);
 //!     rand::sample(rng, choices.into_iter(), 1)[0]
 //! }
 //!
 //! // Returns the door we switch to, given our current choice and
 //! // the open door. There will only be one valid door.
-//! fn switch_door(choice: usize, open: usize) -> usize {
+//! fn switch_door(choice: u32, open: u32) -> u32 {
 //!     free_doors(&[choice, open])[0]
 //! }
 //!
-//! fn free_doors(blocked: &[usize]) -> Vec<usize> {
+//! fn free_doors(blocked: &[u32]) -> Vec<u32> {
 //!     (0..3).filter(|x| !blocked.contains(x)).collect()
 //! }
 //!
@@ -221,18 +240,17 @@
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/rand/")]
-#![feature(core, os, old_path, old_io)]
 
-#![cfg_attr(test, feature(test))]
+#![cfg_attr(test, feature(core, test))]
 
-extern crate core;
 #[cfg(test)] #[macro_use] extern crate log;
 
 use std::cell::RefCell;
 use std::marker;
 use std::mem;
-use std::old_io::IoResult;
+use std::io;
 use std::rc::Rc;
+use std::num::Wrapping as w;
 
 pub use os::OsRng;
 
@@ -253,7 +271,12 @@ pub mod chacha;
 pub mod reseeding;
 mod rand_impls;
 pub mod os;
-pub mod reader;
+pub mod read;
+
+#[allow(bad_style)]
+type w64 = w<u64>;
+#[allow(bad_style)]
+type w32 = w<u32>;
 
 /// A type that can be randomly generated using an `Rng`.
 pub trait Rand : Sized {
@@ -292,8 +315,8 @@ pub trait Rng : Sized {
     /// See `Closed01` for the closed interval `[0,1]`, and
     /// `Open01` for the open interval `(0,1)`.
     fn next_f32(&mut self) -> f32 {
-        const MANTISSA_BITS: usize = 24;
-        const IGNORED_BITS: usize = 8;
+        const MANTISSA_BITS: u32 = 24;
+        const IGNORED_BITS: u32 = 8;
         const SCALE: f32 = (1u64 << MANTISSA_BITS) as f32;
 
         // using any more than `MANTISSA_BITS` bits will
@@ -314,8 +337,8 @@ pub trait Rng : Sized {
     /// See `Closed01` for the closed interval `[0,1]`, and
     /// `Open01` for the open interval `(0,1)`.
     fn next_f64(&mut self) -> f64 {
-        const MANTISSA_BITS: usize = 53;
-        const IGNORED_BITS: usize = 11;
+        const MANTISSA_BITS: u32 = 53;
+        const IGNORED_BITS: u32 = 11;
         const SCALE: f64 = (1u64 << MANTISSA_BITS) as f64;
 
         (self.next_u64() >> IGNORED_BITS) as f64 / SCALE
@@ -346,7 +369,7 @@ pub trait Rng : Sized {
     ///
     /// let mut v = [0u8; 13579];
     /// thread_rng().fill_bytes(&mut v);
-    /// println!("{:?}", v.as_slice());
+    /// println!("{:?}", &v[..]);
     /// ```
     fn fill_bytes(&mut self, dest: &mut [u8]) {
         // this could, in theory, be done by transmuting dest to a
@@ -445,7 +468,7 @@ pub trait Rng : Sized {
     /// let mut rng = thread_rng();
     /// println!("{}", rng.gen_weighted_bool(3));
     /// ```
-    fn gen_weighted_bool(&mut self, n: usize) -> bool {
+    fn gen_weighted_bool(&mut self, n: u32) -> bool {
         n <= 1 || self.gen_range(0, n) == 0
     }
 
@@ -495,9 +518,9 @@ pub trait Rng : Sized {
     /// let mut rng = thread_rng();
     /// let mut y = [1, 2, 3];
     /// rng.shuffle(&mut y);
-    /// println!("{:?}", y.as_slice());
+    /// println!("{:?}", y);
     /// rng.shuffle(&mut y);
-    /// println!("{:?}", y.as_slice());
+    /// println!("{:?}", y);
     /// ```
     fn shuffle<T>(&mut self, values: &mut [T]) {
         let mut i = values.len();
@@ -537,7 +560,7 @@ impl<'a, R: Rng> Iterator for AsciiGenerator<'a, R> {
     type Item = char;
 
     fn next(&mut self) -> Option<char> {
-        static GEN_ASCII_STR_CHARSET: &'static [u8] =
+        const GEN_ASCII_STR_CHARSET: &'static [u8] =
             b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
               abcdefghijklmnopqrstuvwxyz\
               0123456789";
@@ -590,10 +613,10 @@ pub trait SeedableRng<Seed>: Rng {
 #[allow(missing_copy_implementations)]
 #[derive(Clone)]
 pub struct XorShiftRng {
-    x: u32,
-    y: u32,
-    z: u32,
-    w: u32,
+    x: w32,
+    y: w32,
+    z: w32,
+    w: w32,
 }
 
 impl XorShiftRng {
@@ -605,10 +628,10 @@ impl XorShiftRng {
     /// this function
     pub fn new_unseeded() -> XorShiftRng {
         XorShiftRng {
-            x: 0x193a6754,
-            y: 0xa8a7d469,
-            z: 0x97830e05,
-            w: 0x113ba7bb,
+            x: w(0x193a6754),
+            y: w(0xa8a7d469),
+            z: w(0x97830e05),
+            w: w(0x113ba7bb),
         }
     }
 }
@@ -621,9 +644,9 @@ impl Rng for XorShiftRng {
         self.x = self.y;
         self.y = self.z;
         self.z = self.w;
-        let w = self.w;
-        self.w = w ^ (w >> 19) ^ (t ^ (t >> 8));
-        self.w
+        let w_ = self.w;
+        self.w = w_ ^ (w_ >> 19) ^ (t ^ (t >> 8));
+        self.w.0
     }
 }
 
@@ -633,10 +656,10 @@ impl SeedableRng<[u32; 4]> for XorShiftRng {
         assert!(!seed.iter().all(|&x| x == 0),
                 "XorShiftRng.reseed called with an all zero seed.");
 
-        self.x = seed[0];
-        self.y = seed[1];
-        self.z = seed[2];
-        self.w = seed[3];
+        self.x = w(seed[0]);
+        self.y = w(seed[1]);
+        self.z = w(seed[2]);
+        self.w = w(seed[3]);
     }
 
     /// Create a new XorShiftRng. This will panic if `seed` is entirely 0.
@@ -645,10 +668,10 @@ impl SeedableRng<[u32; 4]> for XorShiftRng {
                 "XorShiftRng::from_seed called with an all zero seed.");
 
         XorShiftRng {
-            x: seed[0],
-            y: seed[1],
-            z: seed[2],
-            w: seed[3]
+            x: w(seed[0]),
+            y: w(seed[1]),
+            z: w(seed[2]),
+            w: w(seed[3]),
         }
     }
 }
@@ -659,8 +682,8 @@ impl Rand for XorShiftRng {
         while tuple == (0, 0, 0, 0) {
             tuple = rng.gen();
         }
-        let (x, y, z, w) = tuple;
-        XorShiftRng { x: x, y: y, z: z, w: w }
+        let (x, y, z, w_) = tuple;
+        XorShiftRng { x: w(x), y: w(y), z: w(z), w: w(w_) }
     }
 }
 
@@ -715,8 +738,8 @@ impl StdRng {
     /// appropriate.
     ///
     /// Reading the randomness from the OS may fail, and any error is
-    /// propagated via the `IoResult` return value.
-    pub fn new() -> IoResult<StdRng> {
+    /// propagated via the `io::Result` return value.
+    pub fn new() -> io::Result<StdRng> {
         OsRng::new().map(|mut r| StdRng { rng: r.gen() })
     }
 }
@@ -756,7 +779,7 @@ impl reseeding::Reseeder<StdRng> for ThreadRngReseeder {
         }
     }
 }
-static THREAD_RNG_RESEED_THRESHOLD: usize = 32_768;
+const THREAD_RNG_RESEED_THRESHOLD: u64 = 32_768;
 type ThreadRngInner = reseeding::ReseedingRng<StdRng, ThreadRngReseeder>;
 
 /// The thread-local RNG.
@@ -819,8 +842,8 @@ impl Rng for ThreadRng {
 /// # Examples
 ///
 /// ```
-/// let x = rand::random();
-/// println!("{}", 2u8 * x);
+/// let x = rand::random::<u8>();
+/// println!("{}", x);
 ///
 /// let y = rand::random::<f64>();
 /// println!("{}", y);
@@ -919,7 +942,7 @@ mod test {
                        80, 81, 82, 83, 84, 85, 86, 87];
         for &n in lengths.iter() {
             let mut v = repeat(0u8).take(n).collect::<Vec<_>>();
-            r.fill_bytes(v.as_mut_slice());
+            r.fill_bytes(&mut v);
 
             // use this to get nicer error messages.
             for (i, &byte) in v.iter().enumerate() {
@@ -950,14 +973,14 @@ mod test {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_gen_range_panic_int() {
         let mut r = thread_rng();
         r.gen_range(5, -2);
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_gen_range_panic_usize() {
         let mut r = thread_rng();
         r.gen_range(5, 2);
@@ -1069,8 +1092,8 @@ mod test {
     #[test]
     fn test_std_rng_seeded() {
         let s = thread_rng().gen_iter::<usize>().take(256).collect::<Vec<usize>>();
-        let mut ra: StdRng = SeedableRng::from_seed(s.as_slice());
-        let mut rb: StdRng = SeedableRng::from_seed(s.as_slice());
+        let mut ra: StdRng = SeedableRng::from_seed(&s[..]);
+        let mut rb: StdRng = SeedableRng::from_seed(&s[..]);
         assert!(order::equals(ra.gen_ascii_chars().take(100),
                               rb.gen_ascii_chars().take(100)));
     }
@@ -1078,10 +1101,10 @@ mod test {
     #[test]
     fn test_std_rng_reseed() {
         let s = thread_rng().gen_iter::<usize>().take(256).collect::<Vec<usize>>();
-        let mut r: StdRng = SeedableRng::from_seed(s.as_slice());
+        let mut r: StdRng = SeedableRng::from_seed(&s[..]);
         let string1 = r.gen_ascii_chars().take(100).collect::<String>();
 
-        r.reseed(s.as_slice());
+        r.reseed(&s);
 
         let string2 = r.gen_ascii_chars().take(100).collect::<String>();
         assert_eq!(string1, string2);
@@ -1089,7 +1112,7 @@ mod test {
 }
 
 #[cfg(test)]
-static RAND_BENCH_N: u64 = 100;
+const RAND_BENCH_N: u64 = 100;
 
 #[cfg(test)]
 mod bench {

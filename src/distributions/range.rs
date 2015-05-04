@@ -12,8 +12,7 @@
 
 // this is surprisingly complicated to be both generic & correct
 
-use core::prelude::{PartialOrd};
-use core::num::Int;
+use std::num::Wrapping as w;
 
 use Rng;
 use distributions::{Sample, IndependentSample};
@@ -47,6 +46,7 @@ use distributions::{Sample, IndependentSample};
 ///     println!("{}", sum);
 /// }
 /// ```
+#[derive(Clone, Copy)]
 pub struct Range<X> {
     low: X,
     range: X,
@@ -88,7 +88,7 @@ pub trait SampleRange {
 }
 
 macro_rules! integer_impl {
-    ($ty:ty, $unsigned:ty) => {
+    ($ty:ty, $unsigned:ident) => {
         impl SampleRange for $ty {
             // we play free and fast with unsigned vs signed here
             // (when $ty is signed), but that's fine, since the
@@ -97,8 +97,8 @@ macro_rules! integer_impl {
             // bijection.
 
             fn construct_range(low: $ty, high: $ty) -> Range<$ty> {
-                let range = high as $unsigned - low as $unsigned;
-                let unsigned_max: $unsigned = Int::max_value();
+                let range = (w(high as $unsigned) - w(low as $unsigned)).0;
+                let unsigned_max: $unsigned = ::std::$unsigned::MAX;
 
                 // this is the largest number that fits into $unsigned
                 // that `range` divides evenly, so, if we've sampled
@@ -122,7 +122,7 @@ macro_rules! integer_impl {
                     // be uniformly distributed)
                     if v < r.accept_zone as $unsigned {
                         // and return it, with some adjustments
-                        return r.low + (v % r.range as $unsigned) as $ty;
+                        return (w(r.low) + w((v % r.range as $unsigned) as $ty)).0;
                     }
                 }
             }
@@ -152,7 +152,7 @@ macro_rules! float_impl {
                 }
             }
             fn sample_range<R: Rng>(r: &Range<$ty>, rng: &mut R) -> $ty {
-                r.low + r.range * rng.gen()
+                r.low + r.range * rng.gen::<$ty>()
             }
         }
     }
@@ -163,17 +163,15 @@ float_impl! { f64 }
 
 #[cfg(test)]
 mod tests {
-    use std::num::Int;
-    use std::prelude::v1::*;
     use distributions::{Sample, IndependentSample};
     use super::Range as Range;
 
-    #[should_fail]
+    #[should_panic]
     #[test]
     fn test_range_bad_limits_equal() {
         Range::new(10, 10);
     }
-    #[should_fail]
+    #[should_panic]
     #[test]
     fn test_range_bad_limits_flipped() {
         Range::new(10, 5);
@@ -183,11 +181,11 @@ mod tests {
     fn test_integers() {
         let mut rng = ::test::rng();
         macro_rules! t {
-            ($($ty:ty),*) => {{
+            ($($ty:ident),*) => {{
                 $(
                    let v: &[($ty, $ty)] = &[(0, 10),
                                             (10, 127),
-                                            (Int::min_value(), Int::max_value())];
+                                            (::std::$ty::MIN, ::std::$ty::MAX)];
                    for &(low, high) in v.iter() {
                         let mut sampler: Range<$ty> = Range::new(low, high);
                         for _ in 0..1000 {
