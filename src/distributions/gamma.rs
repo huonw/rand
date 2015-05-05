@@ -15,7 +15,7 @@
 use self::GammaRepr::*;
 use self::ChiSquaredRepr::*;
 
-use {Rng, Open01, Rand, RandStream};
+use {Rng, Open01, RandStream};
 use super::normal::StandardNormal;
 use super::{Exp};
 
@@ -131,10 +131,6 @@ impl GammaLargeShape {
     }
 }
 
-impl Rand<Gamma> for f64 {
-    type Stream = Gamma;
-    fn rand(s: Gamma) -> Gamma { s }
-}
 impl RandStream<f64> for Gamma {
     fn next<R: Rng>(&self, rng: &mut R) -> f64 {
         match self.repr {
@@ -217,11 +213,6 @@ impl ChiSquared {
         ChiSquared { repr: repr }
     }
 }
-impl Rand<ChiSquared> for f64 {
-    type Stream = ChiSquared;
-
-    fn rand(s: ChiSquared) -> ChiSquared { s }
-}
 impl RandStream<f64> for ChiSquared {
     fn next<R: Rng>(&self, rng: &mut R) -> f64 {
         match self.repr {
@@ -274,12 +265,6 @@ impl FisherF {
         }
     }
 }
-impl Rand<FisherF> for f64 {
-    type Stream = FisherF;
-    fn rand(s: FisherF) -> FisherF {
-        s
-    }
-}
 impl RandStream<f64> for FisherF {
     fn next<R: Rng>(&self, rng: &mut R) -> f64 {
         self.numer.next(rng) / self.denom.next(rng) * self.dof_ratio
@@ -314,13 +299,6 @@ impl StudentT {
             chi: ChiSquared::new(n),
             dof: n
         }
-    }
-}
-impl Rand<StudentT> for f64 {
-    type Stream = StudentT;
-
-    fn rand(s: StudentT) -> StudentT {
-        s
     }
 }
 impl RandStream<f64> for StudentT {

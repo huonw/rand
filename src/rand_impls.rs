@@ -14,26 +14,7 @@ use std::char;
 use std::mem;
 use std::ops::RangeFull;
 
-use {Rand,RandStream,Rng};
-
-macro_rules! rand {
-    ($($ty: ty),*) => {
-        $(
-            impl Rand<RangeFull> for $ty {
-                type Stream = RangeFull;
-
-                fn rand(s: RangeFull) -> Self::Stream {
-                    s
-                }
-            }
-            )*
-    }
-}
-
-rand! {
-    isize, i8, i16, i32, i64,
-    usize, u8, u16, u32, u64
-}
+use {RandStream,Rng};
 
 impl RandStream<isize> for RangeFull {
     #[inline]
@@ -117,18 +98,11 @@ macro_rules! float_impls {
     ($mod_name:ident, $ty:ty, $mantissa_bits:expr, $method_name:ident) => {
 
         mod $mod_name {
-            use {Rng, Rand, RandStream, Open01, Closed01};
+            use {Rng, RandStream, Open01, Closed01};
             use std::ops::RangeFull;
 
             const SCALE: $ty = (1u64 << $mantissa_bits) as $ty;
 
-            impl Rand<RangeFull> for $ty {
-                type Stream = RangeFull;
-
-                fn rand(s: RangeFull) -> Self::Stream {
-                    s
-                }
-            }
             impl RandStream<$ty> for RangeFull {
                 /// Generate a floating point number in the half-open
                 /// interval `[0,1)`.
@@ -140,21 +114,9 @@ macro_rules! float_impls {
                     rng.$method_name()
                 }
             }
-            impl Rand<Open01> for $ty {
-                type Stream = Open01;
-                fn rand(_: Open01) -> Self::Stream {
-                    Open01
-                }
-            }
             impl RandStream<$ty> for Open01 {
                 fn next<R: Rng>(&self, rng: &mut R) -> $ty {
                     rng.$method_name() + 0.25 / SCALE
-                }
-            }
-            impl Rand<Closed01> for $ty {
-                type Stream = Closed01;
-                fn rand(_: Closed01) -> Self::Stream {
-                    Closed01
                 }
             }
             impl RandStream<$ty> for Closed01 {
@@ -168,10 +130,6 @@ macro_rules! float_impls {
 float_impls! { f64_rand_impls, f64, 53, next_f64 }
 float_impls! { f32_rand_impls, f32, 24, next_f32 }
 
-impl Rand<RangeFull> for char {
-    type Stream = RangeFull;
-    fn rand(_: RangeFull) -> RangeFull { RangeFull }
-}
 impl RandStream<char> for RangeFull {
     #[inline]
     fn next<R: Rng>(&self, rng: &mut R) -> char {
@@ -189,10 +147,6 @@ impl RandStream<char> for RangeFull {
     }
 }
 
-impl Rand<RangeFull> for bool {
-    type Stream = RangeFull;
-    fn rand(_: RangeFull) -> RangeFull { RangeFull }
-}
 impl RandStream<bool> for RangeFull {
     #[inline]
     fn next<R: Rng>(&self, rng: &mut R) -> bool {

@@ -62,12 +62,22 @@ impl<X: SampleRange + PartialOrd> Range<X> {
 }
 
 use std::ops;
-impl<Sup: SampleRange + PartialOrd> Rand<ops::Range<Sup>> for Sup {
-    type Stream = Range<Sup>;
-
-    fn rand(s: ops::Range<Sup>) -> Range<Sup> {
-        Range::new(s.start, s.end)
+macro_rules! impl_it {
+    ($($ty: ty),*) => {
+        $(
+        impl Rand<ops::Range<$ty>> for $ty {
+            type Stream = Range<$ty>;
+            fn rand(s: ops::Range<$ty>) -> Range<$ty> {
+                Range::new(s.start, s.end)
+            }
+        }
+            )*
     }
+}
+impl_it! {
+    isize, i8, i16, i32, i64,
+    usize, u8, u16, u32, u64,
+    f32, f64
 }
 
 impl<Sup: SampleRange + PartialOrd> RandStream<Sup> for Range<Sup> {

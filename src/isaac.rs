@@ -17,7 +17,7 @@ use std::iter::repeat;
 use std::num::Wrapping as w;
 use std::ops::RangeFull;
 
-use {Rng, SeedableRng, Rand, RandStream, w32, w64};
+use {Rng, SeedableRng, RandStream, w32, w64};
 
 const RAND_SIZE_LEN: usize = 8;
 const RAND_SIZE: u32 = 1 << RAND_SIZE_LEN;
@@ -244,12 +244,6 @@ impl<'a> SeedableRng<&'a [u32]> for IsaacRng {
     }
 }
 
-impl Rand<RangeFull> for IsaacRng {
-    type Stream = RangeFull;
-    fn rand(s: RangeFull) -> Self::Stream {
-        s
-    }
-}
 impl RandStream<IsaacRng> for RangeFull {
     fn next<R: Rng>(&self, other: &mut R) -> IsaacRng {
         let mut ret = EMPTY.clone();
@@ -495,13 +489,6 @@ impl<'a> SeedableRng<&'a [u64]> for Isaac64Rng {
     }
 }
 
-impl Rand<RangeFull> for Isaac64Rng {
-    type Stream = RangeFull;
-
-    fn rand(s: RangeFull) -> Self::Stream {
-        s
-    }
-}
 impl RandStream<Isaac64Rng> for RangeFull {
     fn next<R: Rng>(&self, other: &mut R) -> Isaac64Rng {
         let mut ret = EMPTY_64.clone();

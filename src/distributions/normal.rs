@@ -10,7 +10,7 @@
 
 //! The normal and derived distributions.
 
-use {Rng, Rand, RandStream, Open01};
+use {Rng, RandStream, Open01};
 use distributions::{ziggurat, ziggurat_tables};
 
 /// A wrapper around an `f64` to generate N(0, 1) random numbers
@@ -29,12 +29,6 @@ use distributions::{ziggurat, ziggurat_tables};
 #[derive(Clone, Copy)]
 pub struct StandardNormal;
 
-impl Rand<StandardNormal> for f64 {
-    type Stream = StandardNormal;
-    fn rand(x: StandardNormal) -> StandardNormal {
-        x
-    }
-}
 impl RandStream<f64> for StandardNormal {
     fn next<R: Rng>(&self, rng: &mut R) -> f64 {
         #[inline]
@@ -109,11 +103,6 @@ impl Normal {
         }
     }
 }
-impl Rand<Normal> for f64 {
-    type Stream = Normal;
-
-    fn rand(s: Normal) -> Normal { s }
-}
 impl RandStream<f64> for Normal {
     fn next<R: Rng>(&self, rng: &mut R) -> f64 {
         let n = rng.gen::<f64, _>(StandardNormal);
@@ -154,11 +143,6 @@ impl LogNormal {
         assert!(std_dev >= 0.0, "LogNormal::new called with `std_dev` < 0");
         LogNormal { norm: Normal::new(mean, std_dev) }
     }
-}
-impl Rand<LogNormal> for f64 {
-    type Stream = LogNormal;
-
-    fn rand(s: LogNormal) -> LogNormal { s }
 }
 impl RandStream<f64> for LogNormal {
     fn next<R: Rng>(&self, rng: &mut R) -> f64 {

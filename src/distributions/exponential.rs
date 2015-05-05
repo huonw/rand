@@ -10,7 +10,7 @@
 
 //! The exponential distribution.
 
-use {Rng, Rand, RandStream};
+use {Rng, RandStream};
 use distributions::{ziggurat, ziggurat_tables};
 
 /// A wrapper around an `f64` to generate Exp(1) random numbers.
@@ -31,12 +31,6 @@ use distributions::{ziggurat, ziggurat_tables};
 pub struct Exp1;
 
 // This could be done via `-rng.gen::<f64>().ln()` but that is slower.
-impl Rand<Exp1> for f64 {
-    type Stream = Exp1;
-    fn rand(_: Exp1) -> Exp1 {
-        Exp1
-    }
-}
 impl RandStream<f64> for Exp1 {
     #[inline]
     fn next<R:Rng>(&self, rng: &mut R) -> f64 {
@@ -86,11 +80,6 @@ impl Exp {
     }
 }
 
-impl Rand<Exp> for f64 {
-    type Stream = Exp;
-
-    fn rand(s: Exp) -> Exp { s }
-}
 impl RandStream<f64> for Exp {
     fn next<R: Rng>(&self, rng: &mut R) -> f64 {
         let n = rng.gen::<f64, _>(Exp1);

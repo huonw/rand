@@ -17,7 +17,7 @@
 //! internally. The `IndependentSample` trait is for generating values
 //! that do not need to record state.
 
-use {Rng, Rand, RandStream};
+use {Rng, RandStream};
 
 pub use self::range::Range;
 pub use self::gamma::{Gamma, ChiSquared, FisherF, StudentT};
@@ -107,11 +107,6 @@ impl<'a, T: Clone> WeightedChoice<'a, T> {
 }
 
 pub struct W<T>(pub T);
-impl<'a, T: Clone> Rand<WeightedChoice<'a, T>> for W<T> {
-    type Stream = WeightedChoice<'a, T>;
-
-    fn rand(s: WeightedChoice<'a, T>) -> WeightedChoice<'a, T> { s }
-}
 impl<'a, T: Clone> RandStream<W<T>> for WeightedChoice<'a, T> {
     fn next<R: Rng>(&self, rng: &mut R) -> W<T> {
         // we want to find the first element that has cumulative

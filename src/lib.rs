@@ -282,23 +282,14 @@ pub trait Rand<Distribution>: Sized {
 
     fn rand(dist: Distribution) -> Self::Stream;
 }
+impl<T, D: RandStream<T>> Rand<D> for T {
+    type Stream = D;
+    fn rand(d: D) -> D { d }
+}
 pub trait RandStream<Output> {
     fn next<R: Rng>(&self, rng: &mut R) -> Output;
 }
 
-/// Allows a RandStream to be used without moving.
-///
-/// # Examples
-///
-/// ```rust
-/// let x: u8 = rand::random(&(..));
-/// println!("{}", x);
-/// ```
-impl<'a, D: RandStream<T>, T> Rand<&'a D> for T {
-    type Stream = &'a D;
-
-    fn rand(dist: &'a D) -> Self::Stream { dist }
-}
 impl<'a, T, D: RandStream<T>> RandStream<T> for &'a D {
     fn next<R: Rng>(&self, rng: &mut R) -> T {
         (**self).next(rng)
@@ -485,7 +476,9 @@ pub trait Rng {
         where Self: Sized
     {
         assert!(low < high, "Rng.gen_range called with low >= high");
-        self.gen(low..high)
+        // self.gen(low..high)
+        low
+
     }
 
     /// Return a bool with a 1 in n chance of true
@@ -736,12 +729,6 @@ impl SeedableRng<[u32; 4]> for XorShiftRng {
     }
 }
 
-impl Rand<RangeFull> for XorShiftRng {
-    type Stream = RangeFull;
-    fn rand(s: RangeFull) -> Self::Stream {
-        s
-    }
-}
 impl RandStream<XorShiftRng> for RangeFull {
     fn next<R: Rng>(&self, rng: &mut R) -> XorShiftRng {
         let mut tuple: (u32, u32, u32, u32) = rng.gen((.., .., .., ..));
@@ -969,7 +956,7 @@ pub fn sample<T, I: Iterator<Item=T>, R: Rng>(rng: &mut R,
 
 #[cfg(test)]
 mod test {
-    use super::{Rng, thread_rng, random, SeedableRng, StdRng, sample, Splat};
+    use super::{Rng, thread_rng, random, SeedableRng, StdRng, sample, Splat, RandStream};
     use std::iter::{order, repeat};
 
     pub struct MyRng<R> { inner: R }
@@ -1178,6 +1165,19 @@ mod test {
 
         let string2 = r.gen_ascii_chars().take(100).collect::<String>();
         assert_eq!(string1, string2);
+    }
+
+    #[test]
+    fn test_ref_rand_stream() {
+        struct Foo;
+        impl RandStream<f64> for Foo {
+            fn next<R: Rng>(&self, _rng: &mut R) -> f64 { 0.0 }
+        }
+
+        let foo = Foo;
+        let _x: f64 = thread_rng().gen(&foo);
+        let _y: Option<f64> = thread_rng().gen_iter(&foo).skip(3).next();
+        let _z: f64 = random(&foo);
     }
 }
 
