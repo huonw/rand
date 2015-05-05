@@ -14,9 +14,7 @@
 
 use std::num::Wrapping as w;
 
-use Rng;
-use distributions::{Sample, IndependentSample};
-
+use {Rng, Rand, RandStream};
 /// Sample values uniformly between two bounds.
 ///
 /// This gives a uniform distribution (assuming the RNG used to sample
@@ -34,14 +32,15 @@ use distributions::{Sample, IndependentSample};
 /// # Example
 ///
 /// ```rust
-/// use rand::distributions::{IndependentSample, Range};
+/// use rand::RandStream;
+/// use rand::distributions::{Range};
 ///
 /// fn main() {
 ///     let between = Range::new(10, 10000);
 ///     let mut rng = rand::thread_rng();
 ///     let mut sum = 0;
 ///     for _ in 0..1000 {
-///         sum += between.ind_sample(&mut rng);
+///         sum += between.next(&mut rng);
 ///     }
 ///     println!("{}", sum);
 /// }
@@ -62,12 +61,18 @@ impl<X: SampleRange + PartialOrd> Range<X> {
     }
 }
 
-impl<Sup: SampleRange> Sample<Sup> for Range<Sup> {
-    #[inline]
-    fn sample<R: Rng>(&mut self, rng: &mut R) -> Sup { self.ind_sample(rng) }
+use std::ops;
+impl<Sup: SampleRange + PartialOrd> Rand<ops::Range<Sup>> for Sup {
+    type Stream = Range<Sup>;
+
+    fn rand(s: ops::Range<Sup>) -> Range<Sup> {
+        Range::new(s.start, s.end)
+    }
 }
-impl<Sup: SampleRange> IndependentSample<Sup> for Range<Sup> {
-    fn ind_sample<R: Rng>(&self, rng: &mut R) -> Sup {
+
+impl<Sup: SampleRange + PartialOrd> RandStream for Range<Sup> {
+    type Output = Sup;
+    fn next<R: Rng>(&self, rng: &mut R) -> Sup {
         SampleRange::sample_range(self, rng)
     }
 }
@@ -163,8 +168,8 @@ float_impl! { f64 }
 
 #[cfg(test)]
 mod tests {
-    use distributions::{Sample, IndependentSample};
     use super::Range as Range;
+    use {RandStream};
 
     #[should_panic]
     #[test]
@@ -187,11 +192,9 @@ mod tests {
                                             (10, 127),
                                             (::std::$ty::MIN, ::std::$ty::MAX)];
                    for &(low, high) in v.iter() {
-                        let mut sampler: Range<$ty> = Range::new(low, high);
+                        let sampler: Range<$ty> = Range::new(low, high);
                         for _ in 0..1000 {
-                            let v = sampler.sample(&mut rng);
-                            assert!(low <= v && v < high);
-                            let v = sampler.ind_sample(&mut rng);
+                            let v = sampler.next(&mut rng);
                             assert!(low <= v && v < high);
                         }
                     }
@@ -213,11 +216,9 @@ mod tests {
                                             (1e-35, 1e-25),
                                             (-1e35, 1e35)];
                    for &(low, high) in v.iter() {
-                        let mut sampler: Range<$ty> = Range::new(low, high);
+                        let sampler: Range<$ty> = Range::new(low, high);
                         for _ in 0..1000 {
-                            let v = sampler.sample(&mut rng);
-                            assert!(low <= v && v < high);
-                            let v = sampler.ind_sample(&mut rng);
+                            let v = sampler.next(&mut rng);
                             assert!(low <= v && v < high);
                         }
                     }

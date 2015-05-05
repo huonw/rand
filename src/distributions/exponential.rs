@@ -11,7 +11,7 @@
 //! The exponential distribution.
 
 use {Rng, Rand, RandStream};
-use distributions::{ziggurat, ziggurat_tables, Sample, IndependentSample};
+use distributions::{ziggurat, ziggurat_tables};
 
 /// A wrapper around an `f64` to generate Exp(1) random numbers.
 ///
@@ -65,10 +65,11 @@ impl RandStream for Exp1 {
 /// # Example
 ///
 /// ```rust
-/// use rand::distributions::{Exp, IndependentSample};
+/// use rand::Rng;
+/// use rand::distributions::Exp;
 ///
 /// let exp = Exp::new(2.0);
-/// let v = exp.ind_sample(&mut rand::thread_rng());
+/// let v: f64 = rand::thread_rng().gen(exp);
 /// println!("{} is from a Exp(2) distribution", v);
 /// ```
 #[derive(Clone, Copy)]
@@ -86,11 +87,15 @@ impl Exp {
     }
 }
 
-impl Sample<f64> for Exp {
-    fn sample<R: Rng>(&mut self, rng: &mut R) -> f64 { self.ind_sample(rng) }
+impl Rand<Exp> for f64 {
+    type Stream = Exp;
+
+    fn rand(s: Exp) -> Exp { s }
 }
-impl IndependentSample<f64> for Exp {
-    fn ind_sample<R: Rng>(&self, rng: &mut R) -> f64 {
+impl RandStream for Exp {
+    type Output = f64;
+
+    fn next<R: Rng>(&self, rng: &mut R) -> f64 {
         let n = rng.gen::<f64, _>(Exp1);
         n * self.lambda_inverse
     }
@@ -98,16 +103,15 @@ impl IndependentSample<f64> for Exp {
 
 #[cfg(test)]
 mod test {
-    use distributions::{Sample, IndependentSample};
+    use RandStream;
     use super::Exp;
 
     #[test]
     fn test_exp() {
-        let mut exp = Exp::new(10.0);
+        let exp = Exp::new(10.0);
         let mut rng = ::test::rng();
         for _ in 0..1000 {
-            assert!(exp.sample(&mut rng) >= 0.0);
-            assert!(exp.ind_sample(&mut rng) >= 0.0);
+            assert!(exp.next(&mut rng) >= 0.0);
         }
     }
     #[test]
@@ -126,19 +130,19 @@ mod test {
 mod bench {
     extern crate test;
 
+    use RandStream;
     use self::test::Bencher;
     use std::mem::size_of;
     use super::Exp;
-    use distributions::Sample;
 
     #[bench]
     fn rand_exp(b: &mut Bencher) {
         let mut rng = ::test::weak_rng();
-        let mut exp = Exp::new(2.71828 * 3.14159);
+        let exp = Exp::new(2.71828 * 3.14159);
 
         b.iter(|| {
             for _ in 0..::RAND_BENCH_N {
-                exp.sample(&mut rng);
+                exp.next(&mut rng);
             }
         });
         b.bytes = size_of::<f64>() as u64 * ::RAND_BENCH_N;

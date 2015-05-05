@@ -110,18 +110,17 @@
 //! and multiply this fraction by 4.
 //!
 //! ```
-//! use rand::distributions::{IndependentSample, Range};
+//! use rand::Rng;
 //!
 //! fn main() {
-//!    let between = Range::new(-1f64, 1.);
 //!    let mut rng = rand::thread_rng();
 //!
 //!    let total = 1_000_000;
 //!    let mut in_circle = 0;
 //!
-//!    for _ in 0..total {
-//!        let a = between.ind_sample(&mut rng);
-//!        let b = between.ind_sample(&mut rng);
+//!    let points = rng.gen_iter::<(f64, f64), _>(-1.0..1.0);
+//!
+//!    for (a,b) in points.take(total) {
 //!        if a*a + b*b <= 1. {
 //!            in_circle += 1;
 //!        }
@@ -152,8 +151,8 @@
 //! [Monty Hall Problem]: http://en.wikipedia.org/wiki/Monty_Hall_problem
 //!
 //! ```
-//! use rand::Rng;
-//! use rand::distributions::{IndependentSample, Range};
+//! use rand::{Rng, RandStream};
+//! use rand::distributions::Range;
 //!
 //! struct SimulationResult {
 //!     win: bool,
@@ -163,10 +162,10 @@
 //! // Run a single simulation of the Monty Hall problem.
 //! fn simulate<R: Rng>(random_door: &Range<u32>, rng: &mut R)
 //!                     -> SimulationResult {
-//!     let car = random_door.ind_sample(rng);
+//!     let car = random_door.next(rng);
 //!
 //!     // This is our initial choice
-//!     let mut choice = random_door.ind_sample(rng);
+//!     let mut choice = random_door.next(rng);
 //!
 //!     // The game host opens a door
 //!     let open = game_host_open(car, choice, rng);
@@ -263,7 +262,6 @@ use IsaacRng as IsaacWordRng;
 #[cfg(target_pointer_width = "64")]
 use Isaac64Rng as IsaacWordRng;
 
-use distributions::{Range, IndependentSample};
 use distributions::range::SampleRange;
 
 pub mod distributions;
@@ -473,7 +471,7 @@ pub trait Rng {
         where Self: Sized
     {
         assert!(low < high, "Rng.gen_range called with low >= high");
-        Range::new(low, high).ind_sample(self)
+        self.gen(low..high)
     }
 
     /// Return a bool with a 1 in n chance of true

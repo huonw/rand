@@ -11,7 +11,7 @@
 //! The normal and derived distributions.
 
 use {Rng, Rand, RandStream, Open01};
-use distributions::{ziggurat, ziggurat_tables, Sample, IndependentSample};
+use distributions::{ziggurat, ziggurat_tables};
 
 /// A wrapper around an `f64` to generate N(0, 1) random numbers
 /// (a.k.a.  a standard normal, or Gaussian).
@@ -82,11 +82,12 @@ impl RandStream for StandardNormal {
 /// # Example
 ///
 /// ```rust
-/// use rand::distributions::{Normal, IndependentSample};
+/// use rand::Rng;
+/// use rand::distributions::Normal;
 ///
 /// // mean 2, standard deviation 3
 /// let normal = Normal::new(2.0, 3.0);
-/// let v = normal.ind_sample(&mut rand::thread_rng());
+/// let v: f64 = rand::thread_rng().gen(normal);
 /// println!("{} is from a N(2, 9) distribution", v)
 /// ```
 #[derive(Clone, Copy)]
@@ -110,11 +111,15 @@ impl Normal {
         }
     }
 }
-impl Sample<f64> for Normal {
-    fn sample<R: Rng>(&mut self, rng: &mut R) -> f64 { self.ind_sample(rng) }
+impl Rand<Normal> for f64 {
+    type Stream = Normal;
+
+    fn rand(s: Normal) -> Normal { s }
 }
-impl IndependentSample<f64> for Normal {
-    fn ind_sample<R: Rng>(&self, rng: &mut R) -> f64 {
+impl RandStream for Normal {
+    type Output = f64;
+
+    fn next<R: Rng>(&self, rng: &mut R) -> f64 {
         let n = rng.gen::<f64, _>(StandardNormal);
         self.mean + self.std_dev * n
     }
@@ -129,11 +134,12 @@ impl IndependentSample<f64> for Normal {
 /// # Example
 ///
 /// ```rust
-/// use rand::distributions::{LogNormal, IndependentSample};
+/// use rand::Rng;
+/// use rand::distributions::LogNormal;
 ///
 /// // mean 2, standard deviation 3
 /// let log_normal = LogNormal::new(2.0, 3.0);
-/// let v = log_normal.ind_sample(&mut rand::thread_rng());
+/// let v: f64 = rand::thread_rng().gen(log_normal);
 /// println!("{} is from an ln N(2, 9) distribution", v)
 /// ```
 #[derive(Clone, Copy)]
@@ -153,27 +159,30 @@ impl LogNormal {
         LogNormal { norm: Normal::new(mean, std_dev) }
     }
 }
-impl Sample<f64> for LogNormal {
-    fn sample<R: Rng>(&mut self, rng: &mut R) -> f64 { self.ind_sample(rng) }
+impl Rand<LogNormal> for f64 {
+    type Stream = LogNormal;
+
+    fn rand(s: LogNormal) -> LogNormal { s }
 }
-impl IndependentSample<f64> for LogNormal {
-    fn ind_sample<R: Rng>(&self, rng: &mut R) -> f64 {
-        self.norm.ind_sample(rng).exp()
+impl RandStream for LogNormal {
+    type Output = f64;
+
+    fn next<R: Rng>(&self, rng: &mut R) -> f64 {
+        self.norm.next(rng).exp()
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use distributions::{Sample, IndependentSample};
+    use RandStream;
     use super::{Normal, LogNormal};
 
     #[test]
     fn test_normal() {
-        let mut norm = Normal::new(10.0, 10.0);
+        let norm = Normal::new(10.0, 10.0);
         let mut rng = ::test::rng();
         for _ in 0..1000 {
-            norm.sample(&mut rng);
-            norm.ind_sample(&mut rng);
+            norm.next(&mut rng);
         }
     }
     #[test]
@@ -185,11 +194,10 @@ mod tests {
 
     #[test]
     fn test_log_normal() {
-        let mut lnorm = LogNormal::new(10.0, 10.0);
+        let lnorm = LogNormal::new(10.0, 10.0);
         let mut rng = ::test::rng();
         for _ in 0..1000 {
-            lnorm.sample(&mut rng);
-            lnorm.ind_sample(&mut rng);
+            lnorm.next(&mut rng);
         }
     }
     #[test]
@@ -204,17 +212,17 @@ mod bench {
     extern crate test;
     use self::test::Bencher;
     use std::mem::size_of;
-    use distributions::{Sample};
     use super::Normal;
+    use RandStream;
 
     #[bench]
     fn rand_normal(b: &mut Bencher) {
         let mut rng = ::test::weak_rng();
-        let mut normal = Normal::new(-2.71828, 3.14159);
+        let normal = Normal::new(-2.71828, 3.14159);
 
         b.iter(|| {
             for _ in 0..::RAND_BENCH_N {
-                normal.sample(&mut rng);
+                normal.next(&mut rng);
             }
         });
         b.bytes = size_of::<f64>() as u64 * ::RAND_BENCH_N;

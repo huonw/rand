@@ -17,7 +17,7 @@
 //! internally. The `IndependentSample` trait is for generating values
 //! that do not need to record state.
 
-use Rng;
+use {Rng, Rand, RandStream};
 
 pub use self::range::Range;
 pub use self::gamma::{Gamma, ChiSquared, FisherF, StudentT};
@@ -28,55 +28,6 @@ pub mod range;
 pub mod gamma;
 pub mod normal;
 pub mod exponential;
-
-/// Types that can be used to create a random instance of `Support`.
-pub trait Sample<Support> {
-    /// Generate a random value of `Support`, using `rng` as the
-    /// source of randomness.
-    fn sample<R: Rng>(&mut self, rng: &mut R) -> Support;
-}
-
-/// `Sample`s that do not require keeping track of state.
-///
-/// Since no state is recorded, each sample is (statistically)
-/// independent of all others, assuming the `Rng` used has this
-/// property.
-// FIXME maybe having this separate is overkill (the only reason is to
-// take &self rather than &mut self)? or maybe this should be the
-// trait called `Sample` and the other should be `DependentSample`.
-pub trait IndependentSample<Support>: Sample<Support> {
-    /// Generate a random value.
-    fn ind_sample<R: Rng>(&self, &mut R) -> Support;
-}
-
-/*
-/// A wrapper for generating types that implement `Rand` via the
-/// `Sample` & `IndependentSample` traits.
-pub struct RandSample<Sup> {
-    _marker: marker::PhantomData<fn() -> Sup>,
-}
-
-impl<Sup> Copy for RandSample<Sup> {}
-impl<Sup> Clone for RandSample<Sup> {
-    fn clone(&self) -> Self { *self }
-}
-
-impl<Sup: Rand> Sample<Sup> for RandSample<Sup> {
-    fn sample<R: Rng>(&mut self, rng: &mut R) -> Sup { self.ind_sample(rng) }
-}
-
-impl<Sup: Rand> IndependentSample<Sup> for RandSample<Sup> {
-    fn ind_sample<R: Rng>(&self, rng: &mut R) -> Sup {
-        rng.gen()
-    }
-}
-
-impl<Sup> RandSample<Sup> {
-    pub fn new() -> RandSample<Sup> {
-        RandSample { _marker: marker::PhantomData }
-    }
-}
-*/
 
 /// A value with a particular weight for use with `WeightedChoice`.
 #[derive(Copy)]
@@ -101,16 +52,17 @@ pub struct Weighted<T> {
 /// # Example
 ///
 /// ```rust
-/// use rand::distributions::{Weighted, WeightedChoice, IndependentSample};
+/// use rand::Rng;
+/// use rand::distributions::{Weighted, WeightedChoice, W};
 ///
 /// let mut items = vec!(Weighted { weight: 2, item: 'a' },
 ///                      Weighted { weight: 4, item: 'b' },
 ///                      Weighted { weight: 1, item: 'c' });
 /// let wc = WeightedChoice::new(&mut items);
 /// let mut rng = rand::thread_rng();
-/// for _ in 0..16 {
+/// for W(x) in rng.gen_iter(wc).take(14) {
 ///      // on average prints 'a' 4 times, 'b' 8 and 'c' twice.
-///      println!("{}", wc.ind_sample(&mut rng));
+///      println!("{}", x);
 /// }
 /// ```
 pub struct WeightedChoice<'a, T:'a> {
@@ -154,22 +106,26 @@ impl<'a, T: Clone> WeightedChoice<'a, T> {
     }
 }
 
-impl<'a, T: Clone> Sample<T> for WeightedChoice<'a, T> {
-    fn sample<R: Rng>(&mut self, rng: &mut R) -> T { self.ind_sample(rng) }
-}
+pub struct W<T>(pub T);
+impl<'a, T: Clone> Rand<WeightedChoice<'a, T>> for W<T> {
+    type Stream = WeightedChoice<'a, T>;
 
-impl<'a, T: Clone> IndependentSample<T> for WeightedChoice<'a, T> {
-    fn ind_sample<R: Rng>(&self, rng: &mut R) -> T {
+    fn rand(s: WeightedChoice<'a, T>) -> WeightedChoice<'a, T> { s }
+}
+impl<'a, T: Clone> RandStream for WeightedChoice<'a, T> {
+    type Output = W<T>;
+
+    fn next<R: Rng>(&self, rng: &mut R) -> W<T> {
         // we want to find the first element that has cumulative
         // weight > sample_weight, which we do by binary since the
         // cumulative weights of self.items are sorted.
 
         // choose a weight in [0, total_weight)
-        let sample_weight = self.weight_range.ind_sample(rng);
+        let sample_weight = self.weight_range.next(rng);
 
         // short circuit when it's the first item
         if sample_weight < self.items[0].weight {
-            return self.items[0].item.clone();
+            return W(self.items[0].item.clone());
         }
 
         let mut idx = 0;
@@ -197,7 +153,7 @@ impl<'a, T: Clone> IndependentSample<T> for WeightedChoice<'a, T> {
             }
             modifier /= 2;
         }
-        return self.items[idx + 1].item.clone();
+        return W(self.items[idx + 1].item.clone());
     }
 }
 
@@ -270,8 +226,8 @@ fn ziggurat<R: Rng, P, Z>(
 #[cfg(test)]
 mod tests {
 
-    use {Rng, Rand};
-    use super::{WeightedChoice, Weighted, Sample, IndependentSample};
+    use {Rng, RandStream};
+    use super::{WeightedChoice, Weighted};
 
     // 0, 1, 2, 3, ...
     struct CountingRng { i: u32 }
@@ -301,7 +257,7 @@ mod tests {
                 let mut rng = CountingRng { i: 0 };
 
                 for &val in expected.iter() {
-                    assert_eq!(wc.ind_sample(&mut rng), val)
+                    assert_eq!(wc.next(&mut rng).0, val)
                 }
             }}
         }
