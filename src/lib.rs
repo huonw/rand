@@ -286,6 +286,25 @@ pub trait RandStream<Output> {
     fn next<R: Rng>(&self, rng: &mut R) -> Output;
 }
 
+/// Allows a RandStream to be used without moving.
+///
+/// # Examples
+///
+/// ```rust
+/// let x: u8 = rand::random(&(..));
+/// println!("{}", x);
+/// ```
+impl<'a, D: RandStream<T>, T> Rand<&'a D> for T {
+    type Stream = &'a D;
+
+    fn rand(dist: &'a D) -> Self::Stream { dist }
+}
+impl<'a, T, D: RandStream<T>> RandStream<T> for &'a D {
+    fn next<R: Rng>(&self, rng: &mut R) -> T {
+        (**self).next(rng)
+    }
+}
+
 /// A random number generator.
 pub trait Rng {
     /// Return the next random u32.
