@@ -205,7 +205,7 @@ macro_rules! tuple_impl {
     ($mod_: ident, $($tyvar:ident, $distvar: ident),* ) => {
         mod $mod_ {
             use std::marker::PhantomData;
-            use {Rng, Rand, RandStream};
+            use {Rng, Rand, RandStream, Splat};
             #[allow(non_snake_case)]
             pub struct Stream<$($tyvar: Rand<$distvar>, $distvar),*> {
                 _x: PhantomData<($($distvar,)*)>,
@@ -238,6 +238,17 @@ macro_rules! tuple_impl {
                         )
                 }
             }
+            impl<Dist: Clone, $($tyvar: Rand<Dist>),*>
+                Rand<Splat<Dist>> for ($($tyvar, )*) {
+                    type Stream = Stream<$($tyvar,Dist,)*>;
+
+                    fn rand(_x: Splat<Dist>) -> Stream<$($tyvar,Dist,)*> {
+                        Stream {
+                            _x: PhantomData,
+                            $($tyvar: $tyvar::rand(_x.dist.clone()),)*
+                        }
+                    }
+                }
         }
     }
 }

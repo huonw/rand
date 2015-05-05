@@ -118,8 +118,7 @@
 //!    let total = 1_000_000;
 //!    let mut in_circle = 0;
 //!
-//!    let points = rng.gen_iter::<(f64, f64), _>((-1.0..1.0,
-//!                                                -1.0..1.0));
+//!    let points = rng.gen_iter::<(f64, f64), _>((-1.0..1.0, -1.0..1.0));
 //!
 //!    for (a,b) in points.take(total) {
 //!        if a*a + b*b <= 1. {
@@ -593,6 +592,23 @@ impl<'a, T: Rand<Dist>, Dist, R: Rng> Iterator for Generator<'a, T, Dist, R> {
     }
 }
 
+/// Use one distribution to generate many types at once.
+///
+/// # Examples
+///
+/// ```rust
+/// let x: (f64, u8, char) = rand::random(rand::Splat::new(..));
+/// println!("{:?}", x);
+/// ```
+pub struct Splat<Dist> {
+    dist: Dist
+}
+impl<Dist> Splat<Dist> {
+    pub fn new(dist: Dist) -> Splat<Dist> {
+        Splat { dist: dist }
+    }
+}
+
 /// Iterator which will continuously generate random ascii characters.
 ///
 /// This iterator is created via the `gen_ascii_chars` method on `Rng`.
@@ -953,7 +969,7 @@ pub fn sample<T, I: Iterator<Item=T>, R: Rng>(rng: &mut R,
 
 #[cfg(test)]
 mod test {
-    use super::{Rng, thread_rng, random, SeedableRng, StdRng, sample};
+    use super::{Rng, thread_rng, random, SeedableRng, StdRng, sample, Splat};
     use std::iter::{order, repeat};
 
     pub struct MyRng<R> { inner: R }
@@ -1113,7 +1129,8 @@ mod test {
         let _n : usize = random(..);
         let _f : f32 = random(..);
         //let _o : Option<Option<i8>> = random(..);
-        let _t : (u8, char, bool) = random((.., .., ..));
+        let _t : (u8, char, bool) = random((0..10, .., ..));
+        let _t2 : (u8, char, bool) = random(Splat::new(..));
         /*
         let _many : ((),
                      (usize,
