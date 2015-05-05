@@ -70,8 +70,7 @@ impl<Sup: SampleRange + PartialOrd> Rand<ops::Range<Sup>> for Sup {
     }
 }
 
-impl<Sup: SampleRange + PartialOrd> RandStream for Range<Sup> {
-    type Output = Sup;
+impl<Sup: SampleRange + PartialOrd> RandStream<Sup> for Range<Sup> {
     fn next<R: Rng>(&self, rng: &mut R) -> Sup {
         SampleRange::sample_range(self, rng)
     }

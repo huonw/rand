@@ -112,9 +112,7 @@ impl<'a, T: Clone> Rand<WeightedChoice<'a, T>> for W<T> {
 
     fn rand(s: WeightedChoice<'a, T>) -> WeightedChoice<'a, T> { s }
 }
-impl<'a, T: Clone> RandStream for WeightedChoice<'a, T> {
-    type Output = W<T>;
-
+impl<'a, T: Clone> RandStream<W<T>> for WeightedChoice<'a, T> {
     fn next<R: Rng>(&self, rng: &mut R) -> W<T> {
         // we want to find the first element that has cumulative
         // weight > sample_weight, which we do by binary since the

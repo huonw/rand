@@ -12,25 +12,18 @@
 
 use std::char;
 use std::mem;
-use std::marker::PhantomData;
 use std::ops::RangeFull;
 
 use {Rand,RandStream,Rng};
-
-pub struct NumStream<T> {
-    _x: PhantomData<T>
-}
 
 macro_rules! rand {
     ($($ty: ty),*) => {
         $(
             impl Rand<RangeFull> for $ty {
-                type Stream = NumStream<$ty>;
+                type Stream = RangeFull;
 
-                fn rand(_: RangeFull) -> Self::Stream {
-                    NumStream {
-                        _x: PhantomData
-                    }
+                fn rand(s: RangeFull) -> Self::Stream {
+                    s
                 }
             }
             )*
@@ -42,8 +35,7 @@ rand! {
     usize, u8, u16, u32, u64
 }
 
-impl RandStream for NumStream<isize> {
-    type Output = isize;
+impl RandStream<isize> for RangeFull {
     #[inline]
     fn next<R: Rng>(&self, rng: &mut R) -> isize {
         if mem::size_of::<isize>() == 4 {
@@ -54,40 +46,35 @@ impl RandStream for NumStream<isize> {
     }
 }
 
-impl RandStream for NumStream<i8> {
-    type Output = i8;
+impl RandStream<i8> for RangeFull {
     #[inline]
     fn next<R: Rng>(&self, rng: &mut R) -> i8 {
         rng.next_u32() as i8
     }
 }
 
-impl RandStream for NumStream<i16> {
-    type Output = i16;
+impl RandStream<i16> for RangeFull {
     #[inline]
     fn next<R: Rng>(&self, rng: &mut R) -> i16 {
         rng.next_u32() as i16
     }
 }
 
-impl RandStream for NumStream<i32> {
-    type Output = i32;
+impl RandStream<i32> for RangeFull {
     #[inline]
     fn next<R: Rng>(&self, rng: &mut R) -> i32 {
         rng.next_u32() as i32
     }
 }
 
-impl RandStream for NumStream<i64> {
-    type Output = i64;
+impl RandStream<i64> for RangeFull {
     #[inline]
     fn next<R: Rng>(&self, rng: &mut R) -> i64 {
         rng.next_u64() as i64
     }
 }
 
-impl RandStream for NumStream<usize> {
-    type Output = usize;
+impl RandStream<usize> for RangeFull {
     #[inline]
     fn next<R: Rng>(&self, rng: &mut R) -> usize {
         if mem::size_of::<usize>() == 4 {
@@ -98,32 +85,28 @@ impl RandStream for NumStream<usize> {
     }
 }
 
-impl RandStream for NumStream<u8> {
-    type Output = u8;
+impl RandStream<u8> for RangeFull {
     #[inline]
     fn next<R: Rng>(&self, rng: &mut R) -> u8 {
         rng.next_u32() as u8
     }
 }
 
-impl RandStream for NumStream<u16> {
-    type Output = u16;
+impl RandStream<u16> for RangeFull {
     #[inline]
     fn next<R: Rng>(&self, rng: &mut R) -> u16 {
         rng.next_u32() as u16
     }
 }
 
-impl RandStream for NumStream<u32> {
-    type Output = u32;
+impl RandStream<u32> for RangeFull {
     #[inline]
     fn next<R: Rng>(&self, rng: &mut R) -> u32 {
         rng.next_u32()
     }
 }
 
-impl RandStream for NumStream<u64> {
-    type Output = u64;
+impl RandStream<u64> for RangeFull {
     #[inline]
     fn next<R: Rng>(&self, rng: &mut R) -> u64 {
         rng.next_u64()
@@ -135,21 +118,18 @@ macro_rules! float_impls {
 
         mod $mod_name {
             use {Rng, Rand, RandStream, Open01, Closed01};
-            use super::NumStream;
             use std::ops::RangeFull;
-            use std::marker::PhantomData;
 
             const SCALE: $ty = (1u64 << $mantissa_bits) as $ty;
 
             impl Rand<RangeFull> for $ty {
-                type Stream = NumStream<$ty>;
+                type Stream = RangeFull;
 
-                fn rand(_: RangeFull) -> Self::Stream {
-                    NumStream { _x: PhantomData }
+                fn rand(s: RangeFull) -> Self::Stream {
+                    s
                 }
             }
-            impl RandStream for NumStream<$ty> {
-                type Output = $ty;
+            impl RandStream<$ty> for RangeFull {
                 /// Generate a floating point number in the half-open
                 /// interval `[0,1)`.
                 ///
@@ -160,28 +140,24 @@ macro_rules! float_impls {
                     rng.$method_name()
                 }
             }
-            pub struct Open01Stream;
             impl Rand<Open01> for $ty {
-                type Stream = Open01Stream;
+                type Stream = Open01;
                 fn rand(_: Open01) -> Self::Stream {
-                    Open01Stream
+                    Open01
                 }
             }
-            impl RandStream for Open01Stream {
-                type Output = $ty;
+            impl RandStream<$ty> for Open01 {
                 fn next<R: Rng>(&self, rng: &mut R) -> $ty {
                     rng.$method_name() + 0.25 / SCALE
                 }
             }
-            pub struct Closed01Stream;
             impl Rand<Closed01> for $ty {
-                type Stream = Closed01Stream;
+                type Stream = Closed01;
                 fn rand(_: Closed01) -> Self::Stream {
-                    Closed01Stream
+                    Closed01
                 }
             }
-            impl RandStream for Closed01Stream {
-                type Output = $ty;
+            impl RandStream<$ty> for Closed01 {
                 fn next<R: Rng>(&self, rng: &mut R) -> $ty {
                     rng.$method_name() * SCALE / (SCALE - 1.0)
                 }
@@ -192,13 +168,11 @@ macro_rules! float_impls {
 float_impls! { f64_rand_impls, f64, 53, next_f64 }
 float_impls! { f32_rand_impls, f32, 24, next_f32 }
 
-pub struct CharStream;
 impl Rand<RangeFull> for char {
-    type Stream = CharStream;
-    fn rand(_: RangeFull) -> CharStream { CharStream }
+    type Stream = RangeFull;
+    fn rand(_: RangeFull) -> RangeFull { RangeFull }
 }
-impl RandStream for CharStream {
-    type Output = char;
+impl RandStream<char> for RangeFull {
     #[inline]
     fn next<R: Rng>(&self, rng: &mut R) -> char {
         // a char is 21 bits
@@ -215,13 +189,11 @@ impl RandStream for CharStream {
     }
 }
 
-pub struct BoolStream;
 impl Rand<RangeFull> for bool {
-    type Stream = BoolStream;
-    fn rand(_: RangeFull) -> BoolStream { BoolStream }
+    type Stream = RangeFull;
+    fn rand(_: RangeFull) -> RangeFull { RangeFull }
 }
-impl RandStream for BoolStream {
-    type Output = bool;
+impl RandStream<bool> for RangeFull {
     #[inline]
     fn next<R: Rng>(&self, rng: &mut R) -> bool {
         rng.gen::<u8, _>(..) & 1 == 1
@@ -256,10 +228,9 @@ macro_rules! tuple_impl {
             impl<
                 $( $tyvar : Rand<Dist>, )*
             Dist,
-            > RandStream for Stream<Dist, $($tyvar),*> {
-                type Output = ($($tyvar, )*);
+            > RandStream<($($tyvar, )*)> for Stream<Dist, $($tyvar),*> {
                 #[inline]
-                fn next<R: Rng>(&self, _rng: &mut R) -> Self::Output {
+                fn next<R: Rng>(&self, _rng: &mut R) -> ($($tyvar,)*) {
                     (
                         // use the $tyvar's to get the appropriate number of
                         // repeats (they're not actually needed)
@@ -294,18 +265,17 @@ pub struct OptionStream<BDist, TDist> {
 }
 
 impl<T: Rand<TDist>, TDist> Rand<TDist> for Option<T> {
-    type Stream = OptionStream<BoolStream, T::Stream>;
+    type Stream = OptionStream<RangeFull, T::Stream>;
     fn rand(dist: TDist) -> Self::Stream {
         OptionStream {
-            bdist: BoolStream,
+            bdist: RangeFull,
             tdist: T::rand(dist)
         }
     }
 }
-impl<BDist: RandStream<Output = bool>, TDist: RandStream> RandStream for OptionStream<BDist, TDist> {
-    type Output = Option<TDist::Output>;
+impl<BDist: RandStream<bool>, TDist: RandStream<T>, T> RandStream<Option<T>> for OptionStream<BDist, TDist> {
     #[inline]
-    fn next<R: Rng>(&self, rng: &mut R) -> Self::Output {
+    fn next<R: Rng>(&self, rng: &mut R) -> Option<T> {
         if self.bdist.next(rng) {
             Some(self.tdist.next(rng))
         } else {

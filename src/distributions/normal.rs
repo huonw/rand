@@ -35,9 +35,7 @@ impl Rand<StandardNormal> for f64 {
         x
     }
 }
-impl RandStream for StandardNormal {
-    type Output = f64;
-
+impl RandStream<f64> for StandardNormal {
     fn next<R: Rng>(&self, rng: &mut R) -> f64 {
         #[inline]
         fn pdf(x: f64) -> f64 {
@@ -116,9 +114,7 @@ impl Rand<Normal> for f64 {
 
     fn rand(s: Normal) -> Normal { s }
 }
-impl RandStream for Normal {
-    type Output = f64;
-
+impl RandStream<f64> for Normal {
     fn next<R: Rng>(&self, rng: &mut R) -> f64 {
         let n = rng.gen::<f64, _>(StandardNormal);
         self.mean + self.std_dev * n
@@ -164,9 +160,7 @@ impl Rand<LogNormal> for f64 {
 
     fn rand(s: LogNormal) -> LogNormal { s }
 }
-impl RandStream for LogNormal {
-    type Output = f64;
-
+impl RandStream<f64> for LogNormal {
     fn next<R: Rng>(&self, rng: &mut R) -> f64 {
         self.norm.next(rng).exp()
     }

@@ -135,9 +135,7 @@ impl Rand<Gamma> for f64 {
     type Stream = Gamma;
     fn rand(s: Gamma) -> Gamma { s }
 }
-impl RandStream for Gamma {
-    type Output = f64;
-
+impl RandStream<f64> for Gamma {
     fn next<R: Rng>(&self, rng: &mut R) -> f64 {
         match self.repr {
             Small(ref g) => g.ind_sample(rng),
@@ -224,9 +222,7 @@ impl Rand<ChiSquared> for f64 {
 
     fn rand(s: ChiSquared) -> ChiSquared { s }
 }
-impl RandStream for ChiSquared {
-    type Output = f64;
-
+impl RandStream<f64> for ChiSquared {
     fn next<R: Rng>(&self, rng: &mut R) -> f64 {
         match self.repr {
             DoFExactlyOne => {
@@ -284,9 +280,7 @@ impl Rand<FisherF> for f64 {
         s
     }
 }
-impl RandStream for FisherF {
-    type Output = f64;
-
+impl RandStream<f64> for FisherF {
     fn next<R: Rng>(&self, rng: &mut R) -> f64 {
         self.numer.next(rng) / self.denom.next(rng) * self.dof_ratio
     }
@@ -329,9 +323,7 @@ impl Rand<StudentT> for f64 {
         s
     }
 }
-impl RandStream for StudentT {
-    type Output = f64;
-
+impl RandStream<f64> for StudentT {
     fn next<R: Rng>(&self, rng: &mut R) -> f64 {
         let norm = rng.gen::<f64, _>(StandardNormal);
         norm * (self.dof / self.chi.next(rng)).sqrt()

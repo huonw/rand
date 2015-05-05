@@ -37,8 +37,7 @@ impl Rand<Exp1> for f64 {
         Exp1
     }
 }
-impl RandStream for Exp1 {
-    type Output = f64;
+impl RandStream<f64> for Exp1 {
     #[inline]
     fn next<R:Rng>(&self, rng: &mut R) -> f64 {
         #[inline]
@@ -92,9 +91,7 @@ impl Rand<Exp> for f64 {
 
     fn rand(s: Exp) -> Exp { s }
 }
-impl RandStream for Exp {
-    type Output = f64;
-
+impl RandStream<f64> for Exp {
     fn next<R: Rng>(&self, rng: &mut R) -> f64 {
         let n = rng.gen::<f64, _>(Exp1);
         n * self.lambda_inverse

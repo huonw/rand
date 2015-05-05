@@ -278,17 +278,12 @@ type w64 = w<u64>;
 type w32 = w<u32>;
 
 pub trait Rand<Distribution>: Sized {
-    type Stream: RandStream<Output = Self>;
+    type Stream: RandStream<Self>;
 
     fn rand(dist: Distribution) -> Self::Stream;
 }
-pub trait RandStream {
-    type Output;
-
-    fn next<R: Rng>(&self, rng: &mut R) -> Self::Output;
-}
-pub struct RngStream<R: Rng> {
-    _x: marker::PhantomData<R>
+pub trait RandStream<Output> {
+    fn next<R: Rng>(&self, rng: &mut R) -> Output;
 }
 
 /// A random number generator.
@@ -706,13 +701,12 @@ impl SeedableRng<[u32; 4]> for XorShiftRng {
 }
 
 impl Rand<RangeFull> for XorShiftRng {
-    type Stream = RngStream<XorShiftRng>;
-    fn rand(_: RangeFull) -> Self::Stream {
-        RngStream { _x: marker::PhantomData }
+    type Stream = RangeFull;
+    fn rand(s: RangeFull) -> Self::Stream {
+        s
     }
 }
-impl RandStream for RngStream<XorShiftRng> {
-    type Output = XorShiftRng;
+impl RandStream<XorShiftRng> for RangeFull {
     fn next<R: Rng>(&self, rng: &mut R) -> XorShiftRng {
         let mut tuple: (u32, u32, u32, u32) = rng.gen(..);
         while tuple == (0, 0, 0, 0) {

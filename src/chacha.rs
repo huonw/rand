@@ -12,8 +12,7 @@
 
 use std::num::Wrapping as w;
 use std::ops::RangeFull;
-use std::marker::PhantomData;
-use {Rng, RngStream, SeedableRng, Rand, RandStream, w32};
+use {Rng, SeedableRng, Rand, RandStream, w32};
 
 const KEY_WORDS    : usize =  8; // 8 words for the 256-bit key
 const STATE_WORDS  : usize = 16;
@@ -194,13 +193,12 @@ impl<'a> SeedableRng<&'a [u32]> for ChaChaRng {
 }
 
 impl Rand<RangeFull> for ChaChaRng {
-    type Stream = RngStream<ChaChaRng>;
-    fn rand(_: RangeFull) -> Self::Stream {
-        RngStream { _x: PhantomData }
+    type Stream = RangeFull;
+    fn rand(s: RangeFull) -> Self::Stream {
+        s
     }
 }
-impl RandStream for RngStream<ChaChaRng> {
-    type Output = ChaChaRng;
+impl RandStream<ChaChaRng> for RangeFull {
     fn next<R: Rng>(&self, other: &mut R) -> ChaChaRng {
         let mut key : [u32; KEY_WORDS] = [0; KEY_WORDS];
         for word in key.iter_mut() {
