@@ -118,7 +118,8 @@
 //!    let total = 1_000_000;
 //!    let mut in_circle = 0;
 //!
-//!    let points = rng.gen_iter::<(f64, f64), _>(-1.0..1.0);
+//!    let points = rng.gen_iter::<(f64, f64), _>((-1.0..1.0,
+//!                                                -1.0..1.0));
 //!
 //!    for (a,b) in points.take(total) {
 //!        if a*a + b*b <= 1. {
@@ -425,7 +426,7 @@ pub trait Rng {
     /// let mut rng = thread_rng();
     /// let x: u32 = rng.gen(..);
     /// println!("{}", x);
-    /// println!("{:?}", rng.gen::<(f64, bool), _>(..));
+    /// println!("{:?}", rng.gen::<(f64, bool), _>((.., ..)));
     /// ```
     #[inline(always)]
     fn gen<T: Rand<Dist>, Dist>(&mut self, dist: Dist) -> T
@@ -445,7 +446,7 @@ pub trait Rng {
     /// let mut rng = thread_rng();
     /// let x = rng.gen_iter::<u32, _>(..).take(10).collect::<Vec<u32>>();
     /// println!("{:?}", x);
-    /// println!("{:?}", rng.gen_iter::<(f64, bool), _>(..).take(5)
+    /// println!("{:?}", rng.gen_iter::<(f64, bool), _>((.., ..)).take(5)
     ///                     .collect::<Vec<(f64, bool)>>());
     /// ```
     fn gen_iter<'a, T: Rand<Dist>, Dist>(&'a mut self, dist: Dist) -> Generator<'a, T, Dist, Self>
@@ -727,9 +728,9 @@ impl Rand<RangeFull> for XorShiftRng {
 }
 impl RandStream<XorShiftRng> for RangeFull {
     fn next<R: Rng>(&self, rng: &mut R) -> XorShiftRng {
-        let mut tuple: (u32, u32, u32, u32) = rng.gen(..);
+        let mut tuple: (u32, u32, u32, u32) = rng.gen((.., .., .., ..));
         while tuple == (0, 0, 0, 0) {
-            tuple = rng.gen(..);
+            tuple = rng.gen((.., .., .., ..));
         }
         let (x, y, z, w_) = tuple;
         XorShiftRng { x: w(x), y: w(y), z: w(z), w: w(w_) }
@@ -1111,13 +1112,16 @@ mod test {
         // not sure how to test this aside from just getting some values
         let _n : usize = random(..);
         let _f : f32 = random(..);
-        let _o : Option<Option<i8>> = random(..);
+        //let _o : Option<Option<i8>> = random(..);
+        let _t : (u8, char, bool) = random((.., .., ..));
+        /*
         let _many : ((),
                      (usize,
                       isize,
                       Option<(u32, (bool,))>),
                      (u8, i8, u16, i16, u32, i32, u64, i64),
                      (f32, (f64, (f64,)))) = random(..);
+        */
     }
 
     #[test]

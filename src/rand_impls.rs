@@ -202,38 +202,35 @@ impl RandStream<bool> for RangeFull {
 
 macro_rules! tuple_impl {
     // use variables to indicate the arity of the tuple
-    ($mod_: ident, $($tyvar:ident),* ) => {
+    ($mod_: ident, $($tyvar:ident, $distvar: ident),* ) => {
         mod $mod_ {
             use std::marker::PhantomData;
             use {Rng, Rand, RandStream};
             #[allow(non_snake_case)]
-            pub struct Stream<Dist, $($tyvar: Rand<Dist>),*> {
-                _x: PhantomData<Dist>,
+            pub struct Stream<$($tyvar: Rand<$distvar>, $distvar),*> {
+                _x: PhantomData<($($distvar,)*)>,
                 $($tyvar: $tyvar::Stream),*
             }
             // the trailing commas are for the 1 tuple
+            #[allow(non_snake_case)]
             impl<
-                $( $tyvar : Rand<Dist>, )*
-            Dist: Clone
-                > Rand<Dist> for ( $( $tyvar, )*) {
-                    type Stream = Stream<Dist, $($tyvar),*>;
+                $( $tyvar : Rand<$distvar>, $distvar, )*
+                > Rand<($($distvar,)*)> for ( $( $tyvar, )*) {
+                    type Stream = Stream<$($tyvar, $distvar),*>;
 
-                    fn rand(_dist: Dist) -> Stream<Dist, $($tyvar),*> {
+                    fn rand(($($distvar,)*): ($($distvar,)*)) -> Stream<$($tyvar, $distvar),*> {
                         Stream {
                             _x: PhantomData,
-                            $($tyvar: $tyvar::rand(_dist.clone())),*
+                            $($tyvar: $tyvar::rand($distvar)),*
                         }
                     }
                 }
             impl<
-                $( $tyvar : Rand<Dist>, )*
-            Dist,
-            > RandStream<($($tyvar, )*)> for Stream<Dist, $($tyvar),*> {
+                $( $tyvar : Rand<$distvar>, $distvar, )*
+            > RandStream<($($tyvar, )*)> for Stream<$($tyvar, $distvar),*> {
                 #[inline]
                 fn next<R: Rng>(&self, _rng: &mut R) -> ($($tyvar,)*) {
                     (
-                        // use the $tyvar's to get the appropriate number of
-                        // repeats (they're not actually needed)
                         $(
                             self.$tyvar.next(_rng),
                                 )*
@@ -246,28 +243,28 @@ macro_rules! tuple_impl {
 }
 
 tuple_impl!{zero, }
-tuple_impl!{i,   A}
-tuple_impl!{ii,  A, B}
-tuple_impl!{iii, A, B, C}
-tuple_impl!{iv,  A, B, C, D}
-tuple_impl!{v,   A, B, C, D, E}
-tuple_impl!{vi,  A, B, C, D, E, F}
-tuple_impl!{vii, A, B, C, D, E, F, G}
-tuple_impl!{viii,A, B, C, D, E, F, G, H}
-tuple_impl!{ix,  A, B, C, D, E, F, G, H, I}
-tuple_impl!{x,   A, B, C, D, E, F, G, H, I, J}
-tuple_impl!{xi,  A, B, C, D, E, F, G, H, I, J, K}
-tuple_impl!{xii, A, B, C, D, E, F, G, H, I, J, K, L}
+tuple_impl!{i,   A, A_}
+tuple_impl!{ii,  A, A_, B, B_}
+tuple_impl!{iii, A, A_, B, B_, C, C_}
+tuple_impl!{iv,  A, A_, B, B_, C, C_, D, D_}
+tuple_impl!{v,   A, A_, B, B_, C, C_, D, D_, E, E_}
+tuple_impl!{vi,  A, A_, B, B_, C, C_, D, D_, E, E_, F, F_}
+tuple_impl!{vii, A, A_, B, B_, C, C_, D, D_, E, E_, F, F_, G, G_}
+tuple_impl!{viii,A, A_, B, B_, C, C_, D, D_, E, E_, F, F_, G, G_, H, H_}
+tuple_impl!{ix,  A, A_, B, B_, C, C_, D, D_, E, E_, F, F_, G, G_, H, H_, I, I_}
+tuple_impl!{x,   A, A_, B, B_, C, C_, D, D_, E, E_, F, F_, G, G_, H, H_, I, I_, J, J_}
+tuple_impl!{xi,  A, A_, B, B_, C, C_, D, D_, E, E_, F, F_, G, G_, H, H_, I, I_, J, J_, K, K_}
+tuple_impl!{xii, A, A_, B, B_, C, C_, D, D_, E, E_, F, F_, G, G_, H, H_, I, I_, J, J_, K, K_, L, L_}
 
+/*
 pub struct OptionStream<BDist, TDist> {
     bdist: BDist,
     tdist: TDist,
 }
 
 impl<T: Rand<TDist>, TDist> Rand<TDist> for Option<T> {
-    type Stream = OptionStream<RangeFull, T::Stream>;
     fn rand(dist: TDist) -> Self::Stream {
-        OptionStream {
+        OptionStream<OptionStream<RangeFull, T::Stream>> {
             bdist: RangeFull,
             tdist: T::rand(dist)
         }
@@ -283,6 +280,7 @@ impl<BDist: RandStream<bool>, TDist: RandStream<T>, T> RandStream<Option<T>> for
         }
     }
 }
+*/
 
 #[cfg(test)]
 mod tests {
