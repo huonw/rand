@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 #![feature(plugin, custom_derive)]
 #![plugin(rand_macros)]
+#![cfg(die)]
 
 extern crate rand;
 

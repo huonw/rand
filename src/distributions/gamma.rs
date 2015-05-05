@@ -151,7 +151,7 @@ impl IndependentSample<f64> for Gamma {
 }
 impl IndependentSample<f64> for GammaSmallShape {
     fn ind_sample<R: Rng>(&self, rng: &mut R) -> f64 {
-        let Open01(u) = rng.gen::<Open01<f64>>();
+        let u: f64 = rng.gen(Open01);
 
         self.large_shape.ind_sample(rng) * u.powf(self.inv_shape)
     }
@@ -159,14 +159,14 @@ impl IndependentSample<f64> for GammaSmallShape {
 impl IndependentSample<f64> for GammaLargeShape {
     fn ind_sample<R: Rng>(&self, rng: &mut R) -> f64 {
         loop {
-            let StandardNormal(x) = rng.gen::<StandardNormal>();
+            let x: f64 = rng.gen(StandardNormal);
             let v_cbrt = 1.0 + self.c * x;
             if v_cbrt <= 0.0 { // a^3 <= 0 iff a <= 0
                 continue
             }
 
             let v = v_cbrt * v_cbrt * v_cbrt;
-            let Open01(u) = rng.gen::<Open01<f64>>();
+            let u: f64 = rng.gen(Open01);
 
             let x_sqr = x * x;
             if u < 1.0 - 0.0331 * x_sqr * x_sqr ||
@@ -229,7 +229,7 @@ impl IndependentSample<f64> for ChiSquared {
         match self.repr {
             DoFExactlyOne => {
                 // k == 1 => N(0,1)^2
-                let StandardNormal(norm) = rng.gen::<StandardNormal>();
+                let norm: f64 = rng.gen(StandardNormal);
                 norm * norm
             }
             DoFAnythingElse(ref g) => g.ind_sample(rng)
@@ -318,7 +318,7 @@ impl Sample<f64> for StudentT {
 }
 impl IndependentSample<f64> for StudentT {
     fn ind_sample<R: Rng>(&self, rng: &mut R) -> f64 {
-        let StandardNormal(norm) = rng.gen::<StandardNormal>();
+        let norm = rng.gen::<f64, _>(StandardNormal);
         norm * (self.dof / self.chi.ind_sample(rng)).sqrt()
     }
 }

@@ -82,13 +82,13 @@
 //! use rand::Rng;
 //!
 //! let mut rng = rand::thread_rng();
-//! if rng.gen() { // random bool
-//!     println!("i32: {}, u32: {}", rng.gen::<i32>(), rng.gen::<u32>())
+//! if rng.gen(..) { // random bool
+//!     println!("i32: {}, u32: {}", rng.gen::<i32, _>(..), rng.gen::<u32, _>(..))
 //! }
 //! ```
 //!
 //! ```rust
-//! let tuple = rand::random::<(f64, char)>();
+//! let tuple: f64 = rand::random(..);
 //! println!("{:?}", tuple)
 //! ```
 //!
@@ -172,7 +172,7 @@
 //!     let open = game_host_open(car, choice, rng);
 //!
 //!     // Shall we switch?
-//!     let switch = rng.gen();
+//!     let switch = rng.gen(..);
 //!     if switch {
 //!         choice = switch_door(choice, open);
 //!     }
@@ -251,6 +251,7 @@ use std::mem;
 use std::io;
 use std::rc::Rc;
 use std::num::Wrapping as w;
+use std::ops::RangeFull;
 
 pub use os::OsRng;
 
@@ -278,11 +279,18 @@ type w64 = w<u64>;
 #[allow(bad_style)]
 type w32 = w<u32>;
 
-/// A type that can be randomly generated using an `Rng`.
-pub trait Rand : Sized {
-    /// Generates a random instance of this type using the specified source of
-    /// randomness.
-    fn rand<R: Rng>(rng: &mut R) -> Self;
+pub trait Rand<Distribution>: Sized {
+    type Stream: RandStream<Output = Self>;
+
+    fn rand(dist: Distribution) -> Self::Stream;
+}
+pub trait RandStream {
+    type Output;
+
+    fn next<R: Rng>(&self, rng: &mut R) -> Self::Output;
+}
+pub struct RngStream<R: Rng> {
+    _x: marker::PhantomData<R>
 }
 
 /// A random number generator.
@@ -403,15 +411,15 @@ pub trait Rng {
     /// use rand::{thread_rng, Rng};
     ///
     /// let mut rng = thread_rng();
-    /// let x: u32 = rng.gen();
+    /// let x: u32 = rng.gen(..);
     /// println!("{}", x);
-    /// println!("{:?}", rng.gen::<(f64, bool)>());
+    /// println!("{:?}", rng.gen::<(f64, bool), _>(..));
     /// ```
     #[inline(always)]
-    fn gen<T: Rand>(&mut self) -> T
+    fn gen<T: Rand<Dist>, Dist>(&mut self, dist: Dist) -> T
         where Self: Sized
     {
-        Rand::rand(self)
+        T::rand(dist).next(self)
     }
 
     /// Return an iterator that will yield an infinite number of randomly
@@ -423,15 +431,19 @@ pub trait Rng {
     /// use rand::{thread_rng, Rng};
     ///
     /// let mut rng = thread_rng();
-    /// let x = rng.gen_iter::<u32>().take(10).collect::<Vec<u32>>();
+    /// let x = rng.gen_iter::<u32, _>(..).take(10).collect::<Vec<u32>>();
     /// println!("{:?}", x);
-    /// println!("{:?}", rng.gen_iter::<(f64, bool)>().take(5)
+    /// println!("{:?}", rng.gen_iter::<(f64, bool), _>(..).take(5)
     ///                     .collect::<Vec<(f64, bool)>>());
     /// ```
-    fn gen_iter<'a, T: Rand>(&'a mut self) -> Generator<'a, T, Self>
+    fn gen_iter<'a, T: Rand<Dist>, Dist>(&'a mut self, dist: Dist) -> Generator<'a, T, Dist, Self>
         where Self: Sized
     {
-        Generator { rng: self, _marker: marker::PhantomData }
+        Generator {
+            rng: self,
+            stream: T::rand(dist),
+            _marker: marker::PhantomData
+        }
     }
 
     /// Generate a random value in the range [`low`, `high`).
@@ -554,16 +566,17 @@ fn _assert_object_safe<R: Rng>(r: &R) {
 /// Iterator which will generate a stream of random items.
 ///
 /// This iterator is created via the `gen_iter` method on `Rng`.
-pub struct Generator<'a, T, R:'a> {
+pub struct Generator<'a, T: Rand<Dist>, Dist, R:'a> {
     rng: &'a mut R,
+    stream: T::Stream,
     _marker: marker::PhantomData<fn() -> T>,
 }
 
-impl<'a, T: Rand, R: Rng> Iterator for Generator<'a, T, R> {
+impl<'a, T: Rand<Dist>, Dist, R: Rng> Iterator for Generator<'a, T, Dist, R> {
     type Item = T;
 
     fn next(&mut self) -> Option<T> {
-        Some(self.rng.gen())
+        Some(self.stream.next(self.rng))
     }
 }
 
@@ -598,9 +611,9 @@ pub trait SeedableRng<Seed>: Rng {
     ///
     /// let seed: &[_] = &[1, 2, 3, 4];
     /// let mut rng: StdRng = SeedableRng::from_seed(seed);
-    /// println!("{}", rng.gen::<f64>());
+    /// println!("{}", rng.gen::<f64, _>(..));
     /// rng.reseed(&[5, 6, 7, 8]);
-    /// println!("{}", rng.gen::<f64>());
+    /// println!("{}", rng.gen::<f64, _>(..));
     /// ```
     fn reseed(&mut self, Seed);
 
@@ -613,7 +626,7 @@ pub trait SeedableRng<Seed>: Rng {
     ///
     /// let seed: &[_] = &[1, 2, 3, 4];
     /// let mut rng: StdRng = SeedableRng::from_seed(seed);
-    /// println!("{}", rng.gen::<f64>());
+    /// println!("{}", rng.gen::<f64, _>(..));
     /// ```
     fn from_seed(seed: Seed) -> Self;
 }
@@ -694,11 +707,18 @@ impl SeedableRng<[u32; 4]> for XorShiftRng {
     }
 }
 
-impl Rand for XorShiftRng {
-    fn rand<R: Rng>(rng: &mut R) -> XorShiftRng {
-        let mut tuple: (u32, u32, u32, u32) = rng.gen();
+impl Rand<RangeFull> for XorShiftRng {
+    type Stream = RngStream<XorShiftRng>;
+    fn rand(_: RangeFull) -> Self::Stream {
+        RngStream { _x: marker::PhantomData }
+    }
+}
+impl RandStream for RngStream<XorShiftRng> {
+    type Output = XorShiftRng;
+    fn next<R: Rng>(&self, rng: &mut R) -> XorShiftRng {
+        let mut tuple: (u32, u32, u32, u32) = rng.gen(..);
         while tuple == (0, 0, 0, 0) {
-            tuple = rng.gen();
+            tuple = rng.gen(..);
         }
         let (x, y, z, w_) = tuple;
         XorShiftRng { x: w(x), y: w(y), z: w(z), w: w(w_) }
@@ -716,10 +736,10 @@ impl Rand for XorShiftRng {
 /// ```rust
 /// use rand::{random, Open01};
 ///
-/// let Open01(val) = random::<Open01<f32>>();
+/// let val: f32 = random(Open01);
 /// println!("f32 from (0,1): {}", val);
 /// ```
-pub struct Open01<F>(pub F);
+pub struct Open01;
 
 /// A wrapper for generating floating point numbers uniformly in the
 /// closed interval `[0,1]` (including both endpoints).
@@ -733,10 +753,10 @@ pub struct Open01<F>(pub F);
 /// ```rust
 /// use rand::{random, Closed01};
 ///
-/// let Closed01(val) = random::<Closed01<f32>>();
+/// let val: f32 = random(Closed01);
 /// println!("f32 from [0,1]: {}", val);
 /// ```
-pub struct Closed01<F>(pub F);
+pub struct Closed01;
 
 /// The standard RNG. This is designed to be efficient on the current
 /// platform.
@@ -758,7 +778,7 @@ impl StdRng {
     /// Reading the randomness from the OS may fail, and any error is
     /// propagated via the `io::Result` return value.
     pub fn new() -> io::Result<StdRng> {
-        OsRng::new().map(|mut r| StdRng { rng: r.gen() })
+        OsRng::new().map(|mut r| StdRng { rng: r.gen(..) })
     }
 }
 
@@ -860,13 +880,13 @@ impl Rng for ThreadRng {
 /// # Examples
 ///
 /// ```
-/// let x = rand::random::<u8>();
+/// let x = rand::random::<u8, _>(..);
 /// println!("{}", x);
 ///
-/// let y = rand::random::<f64>();
+/// let y: f64 = rand::random(..);
 /// println!("{}", y);
 ///
-/// if rand::random() { // generates a boolean
+/// if rand::random(..) { // generates a boolean
 ///     println!("Better lucky than good!");
 /// }
 /// ```
@@ -879,7 +899,7 @@ impl Rng for ThreadRng {
 /// let mut v = vec![1, 2, 3];
 ///
 /// for x in v.iter_mut() {
-///     *x = rand::random()
+///     *x = rand::random(..)
 /// }
 ///
 /// // would be faster as
@@ -887,12 +907,12 @@ impl Rng for ThreadRng {
 /// let mut rng = rand::thread_rng();
 ///
 /// for x in v.iter_mut() {
-///     *x = rng.gen();
+///     *x = rng.gen(..);
 /// }
 /// ```
 #[inline]
-pub fn random<T: Rand>() -> T {
-    thread_rng().gen()
+pub fn random<T: Rand<Dist>, Dist>(dist: Dist) -> T {
+    thread_rng().gen(dist)
 }
 
 /// Randomly sample up to `amount` elements from an iterator.
@@ -940,7 +960,7 @@ mod test {
     }
 
     pub fn weak_rng() -> MyRng<::XorShiftRng> {
-        MyRng { inner: random() }
+        MyRng { inner: random(..) }
     }
 
     struct ConstRng { i: u64 }
@@ -1007,8 +1027,8 @@ mod test {
     #[test]
     fn test_gen_f64() {
         let mut r = thread_rng();
-        let a = r.gen::<f64>();
-        let b = r.gen::<f64>();
+        let a = r.gen::<f64, _>(..);
+        let b = r.gen::<f64, _>(..);
         debug!("{:?}", (a, b));
     }
 
@@ -1030,9 +1050,9 @@ mod test {
     #[test]
     fn test_gen_vec() {
         let mut r = thread_rng();
-        assert_eq!(r.gen_iter::<u8>().take(0).count(), 0);
-        assert_eq!(r.gen_iter::<u8>().take(10).count(), 10);
-        assert_eq!(r.gen_iter::<f64>().take(16).count(), 16);
+        assert_eq!(r.gen_iter::<u8, _>(..).take(0).count(), 0);
+        assert_eq!(r.gen_iter::<u8, _>(..).take(10).count(), 10);
+        assert_eq!(r.gen_iter::<f64, _>(..).take(16).count(), 16);
     }
 
     #[test]
@@ -1067,7 +1087,7 @@ mod test {
     #[test]
     fn test_thread_rng() {
         let mut r = thread_rng();
-        r.gen::<i32>();
+        r.gen::<i32, _>(..);
         let mut v = [1, 1, 1];
         r.shuffle(&mut v);
         let b: &[_] = &[1, 1, 1];
@@ -1078,15 +1098,15 @@ mod test {
     #[test]
     fn test_random() {
         // not sure how to test this aside from just getting some values
-        let _n : usize = random();
-        let _f : f32 = random();
-        let _o : Option<Option<i8>> = random();
+        let _n : usize = random(..);
+        let _f : f32 = random(..);
+        let _o : Option<Option<i8>> = random(..);
         let _many : ((),
                      (usize,
                       isize,
                       Option<(u32, (bool,))>),
                      (u8, i8, u16, i16, u32, i32, u64, i64),
-                     (f32, (f64, (f64,)))) = random();
+                     (f32, (f64, (f64,)))) = random(..);
     }
 
     #[test]
@@ -1109,7 +1129,7 @@ mod test {
 
     #[test]
     fn test_std_rng_seeded() {
-        let s = thread_rng().gen_iter::<usize>().take(256).collect::<Vec<usize>>();
+        let s = thread_rng().gen_iter::<usize, _>(..).take(256).collect::<Vec<usize>>();
         let mut ra: StdRng = SeedableRng::from_seed(&s[..]);
         let mut rb: StdRng = SeedableRng::from_seed(&s[..]);
         assert!(order::equals(ra.gen_ascii_chars().take(100),
@@ -1118,7 +1138,7 @@ mod test {
 
     #[test]
     fn test_std_rng_reseed() {
-        let s = thread_rng().gen_iter::<usize>().take(256).collect::<Vec<usize>>();
+        let s = thread_rng().gen_iter::<usize, _>(..).take(256).collect::<Vec<usize>>();
         let mut r: StdRng = SeedableRng::from_seed(&s[..]);
         let string1 = r.gen_ascii_chars().take(100).collect::<String>();
 
@@ -1141,10 +1161,10 @@ mod bench {
 
     #[bench]
     fn rand_xorshift(b: &mut Bencher) {
-        let mut rng: XorShiftRng = OsRng::new().unwrap().gen();
+        let mut rng: XorShiftRng = OsRng::new().unwrap().gen(..);
         b.iter(|| {
             for _ in 0..RAND_BENCH_N {
-                black_box(rng.gen::<usize>());
+                black_box(rng.gen::<usize, _>(..));
             }
         });
         b.bytes = size_of::<usize>() as u64 * RAND_BENCH_N;
@@ -1152,10 +1172,10 @@ mod bench {
 
     #[bench]
     fn rand_isaac(b: &mut Bencher) {
-        let mut rng: IsaacRng = OsRng::new().unwrap().gen();
+        let mut rng: IsaacRng = OsRng::new().unwrap().gen(..);
         b.iter(|| {
             for _ in 0..RAND_BENCH_N {
-                black_box(rng.gen::<usize>());
+                black_box(rng.gen::<usize, _>(..));
             }
         });
         b.bytes = size_of::<usize>() as u64 * RAND_BENCH_N;
@@ -1163,10 +1183,10 @@ mod bench {
 
     #[bench]
     fn rand_isaac64(b: &mut Bencher) {
-        let mut rng: Isaac64Rng = OsRng::new().unwrap().gen();
+        let mut rng: Isaac64Rng = OsRng::new().unwrap().gen(..);
         b.iter(|| {
             for _ in 0..RAND_BENCH_N {
-                black_box(rng.gen::<usize>());
+                black_box(rng.gen::<usize, _>(..));
             }
         });
         b.bytes = size_of::<usize>() as u64 * RAND_BENCH_N;
@@ -1177,7 +1197,7 @@ mod bench {
         let mut rng = StdRng::new().unwrap();
         b.iter(|| {
             for _ in 0..RAND_BENCH_N {
-                black_box(rng.gen::<usize>());
+                black_box(rng.gen::<usize, _>(..));
             }
         });
         b.bytes = size_of::<usize>() as u64 * RAND_BENCH_N;
@@ -1185,7 +1205,7 @@ mod bench {
 
     #[bench]
     fn rand_shuffle_100(b: &mut Bencher) {
-        let mut rng: XorShiftRng = random();
+        let mut rng: XorShiftRng = random(..);
         let x : &mut[usize] = &mut [1; 100];
         b.iter(|| {
             rng.shuffle(x);

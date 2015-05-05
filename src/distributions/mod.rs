@@ -17,9 +17,7 @@
 //! internally. The `IndependentSample` trait is for generating values
 //! that do not need to record state.
 
-use std::marker;
-
-use {Rng, Rand};
+use Rng;
 
 pub use self::range::Range;
 pub use self::gamma::{Gamma, ChiSquared, FisherF, StudentT};
@@ -51,6 +49,7 @@ pub trait IndependentSample<Support>: Sample<Support> {
     fn ind_sample<R: Rng>(&self, &mut R) -> Support;
 }
 
+/*
 /// A wrapper for generating types that implement `Rand` via the
 /// `Sample` & `IndependentSample` traits.
 pub struct RandSample<Sup> {
@@ -77,6 +76,7 @@ impl<Sup> RandSample<Sup> {
         RandSample { _marker: marker::PhantomData }
     }
 }
+*/
 
 /// A value with a particular weight for use with `WeightedChoice`.
 #[derive(Copy)]
@@ -242,7 +242,7 @@ fn ziggurat<R: Rng, P, Z>(
         // efficiently and overload next_f32/f64, so by not calling it
         // this may be slower than it would be otherwise.)
         // FIXME: investigate/optimise for the above.
-        let bits: u64 = rng.gen();
+        let bits: u64 = rng.gen(..);
         let i = (bits & 0xff) as usize;
         let f = (bits >> 11) as f64 / SCALE;
 
@@ -261,7 +261,7 @@ fn ziggurat<R: Rng, P, Z>(
             return zero_case(rng, u);
         }
         // algebraically equivalent to f1 + DRanU()*(f0 - f1) < 1
-        if f_tab[i + 1] + (f_tab[i] - f_tab[i + 1]) * rng.gen::<f64>() < pdf(x) {
+        if f_tab[i + 1] + (f_tab[i] - f_tab[i + 1]) * rng.gen::<f64, _>(..) < pdf(x) {
             return x;
         }
     }
@@ -271,15 +271,7 @@ fn ziggurat<R: Rng, P, Z>(
 mod tests {
 
     use {Rng, Rand};
-    use super::{RandSample, WeightedChoice, Weighted, Sample, IndependentSample};
-
-    #[derive(PartialEq, Debug)]
-    struct ConstRand(usize);
-    impl Rand for ConstRand {
-        fn rand<R: Rng>(_: &mut R) -> ConstRand {
-            ConstRand(0)
-        }
-    }
+    use super::{WeightedChoice, Weighted, Sample, IndependentSample};
 
     // 0, 1, 2, 3, ...
     struct CountingRng { i: u32 }
@@ -293,13 +285,6 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_rand_sample() {
-        let mut rand_sample = RandSample::<ConstRand>::new();
-
-        assert_eq!(rand_sample.sample(&mut ::test::rng()), ConstRand(0));
-        assert_eq!(rand_sample.ind_sample(&mut ::test::rng()), ConstRand(0));
-    }
     #[test]
     fn test_weighted_choice() {
         // this makes assumptions about the internal implementation of

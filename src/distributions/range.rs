@@ -116,7 +116,7 @@ macro_rules! integer_impl {
             fn sample_range<R: Rng>(r: &Range<$ty>, rng: &mut R) -> $ty {
                 loop {
                     // rejection sample
-                    let v = rng.gen::<$unsigned>();
+                    let v = rng.gen::<$unsigned, _>(..);
                     // until we find something that fits into the
                     // region which r.range evenly divides (this will
                     // be uniformly distributed)
@@ -152,7 +152,7 @@ macro_rules! float_impl {
                 }
             }
             fn sample_range<R: Rng>(r: &Range<$ty>, rng: &mut R) -> $ty {
-                r.low + r.range * rng.gen::<$ty>()
+                r.low + r.range * rng.gen::<$ty, _>(..)
             }
         }
     }

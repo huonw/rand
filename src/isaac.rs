@@ -15,8 +15,10 @@
 use std::slice;
 use std::iter::repeat;
 use std::num::Wrapping as w;
+use std::ops::RangeFull;
+use std::marker::PhantomData;
 
-use {Rng, SeedableRng, Rand, w32, w64};
+use {Rng, RngStream, SeedableRng, Rand, RandStream, w32, w64};
 
 const RAND_SIZE_LEN: usize = 8;
 const RAND_SIZE: u32 = 1 << RAND_SIZE_LEN;
@@ -243,8 +245,15 @@ impl<'a> SeedableRng<&'a [u32]> for IsaacRng {
     }
 }
 
-impl Rand for IsaacRng {
-    fn rand<R: Rng>(other: &mut R) -> IsaacRng {
+impl Rand<RangeFull> for IsaacRng {
+    type Stream = RngStream<IsaacRng>;
+    fn rand(_: RangeFull) -> Self::Stream {
+        RngStream { _x: PhantomData }
+    }
+}
+impl RandStream for RngStream<IsaacRng> {
+    type Output = IsaacRng;
+    fn next<R: Rng>(&self, other: &mut R) -> IsaacRng {
         let mut ret = EMPTY.clone();
         unsafe {
             let ptr = ret.rsl.as_mut_ptr() as *mut u8;
@@ -488,8 +497,17 @@ impl<'a> SeedableRng<&'a [u64]> for Isaac64Rng {
     }
 }
 
-impl Rand for Isaac64Rng {
-    fn rand<R: Rng>(other: &mut R) -> Isaac64Rng {
+impl Rand<RangeFull> for Isaac64Rng {
+    type Stream = RngStream<Isaac64Rng>;
+
+    fn rand(_: RangeFull) -> Self::Stream {
+        RngStream { _x: PhantomData }
+    }
+}
+impl RandStream for RngStream<Isaac64Rng> {
+    type Output = Isaac64Rng;
+
+    fn next<R: Rng>(&self, other: &mut R) -> Isaac64Rng {
         let mut ret = EMPTY_64.clone();
         unsafe {
             let ptr = ret.rsl.as_mut_ptr() as *mut u8;
@@ -516,7 +534,7 @@ mod test {
 
     #[test]
     fn test_rng_32_rand_seeded() {
-        let s = ::test::rng().gen_iter::<u32>().take(256).collect::<Vec<u32>>();
+        let s = ::test::rng().gen_iter::<u32, _>(..).take(256).collect::<Vec<u32>>();
         let mut ra: IsaacRng = SeedableRng::from_seed(&s[..]);
         let mut rb: IsaacRng = SeedableRng::from_seed(&s[..]);
         assert!(order::equals(ra.gen_ascii_chars().take(100),
@@ -524,7 +542,7 @@ mod test {
     }
     #[test]
     fn test_rng_64_rand_seeded() {
-        let s = ::test::rng().gen_iter::<u64>().take(256).collect::<Vec<u64>>();
+        let s = ::test::rng().gen_iter::<u64, _>(..).take(256).collect::<Vec<u64>>();
         let mut ra: Isaac64Rng = SeedableRng::from_seed(&s[..]);
         let mut rb: Isaac64Rng = SeedableRng::from_seed(&s[..]);
         assert!(order::equals(ra.gen_ascii_chars().take(100),
@@ -550,7 +568,7 @@ mod test {
 
     #[test]
     fn test_rng_32_reseed() {
-        let s = ::test::rng().gen_iter::<u32>().take(256).collect::<Vec<u32>>();
+        let s = ::test::rng().gen_iter::<u32, _>(..).take(256).collect::<Vec<u32>>();
         let mut r: IsaacRng = SeedableRng::from_seed(&s[..]);
         let string1: String = r.gen_ascii_chars().take(100).collect();
 
@@ -561,7 +579,7 @@ mod test {
     }
     #[test]
     fn test_rng_64_reseed() {
-        let s = ::test::rng().gen_iter::<u64>().take(256).collect::<Vec<u64>>();
+        let s = ::test::rng().gen_iter::<u64, _>(..).take(256).collect::<Vec<u64>>();
         let mut r: Isaac64Rng = SeedableRng::from_seed(&s[..]);
         let string1: String = r.gen_ascii_chars().take(100).collect();
 

@@ -10,7 +10,7 @@
 
 //! The normal and derived distributions.
 
-use {Rng, Rand, Open01};
+use {Rng, Rand, RandStream, Open01};
 use distributions::{ziggurat, ziggurat_tables, Sample, IndependentSample};
 
 /// A wrapper around an `f64` to generate N(0, 1) random numbers
@@ -27,10 +27,18 @@ use distributions::{ziggurat, ziggurat_tables, Sample, IndependentSample};
 /// Samples*](http://www.doornik.com/research/ziggurat.pdf). Nuffield
 /// College, Oxford
 #[derive(Clone, Copy)]
-pub struct StandardNormal(pub f64);
+pub struct StandardNormal;
 
-impl Rand for StandardNormal {
-    fn rand<R:Rng>(rng: &mut R) -> StandardNormal {
+impl Rand<StandardNormal> for f64 {
+    type Stream = StandardNormal;
+    fn rand(x: StandardNormal) -> StandardNormal {
+        x
+    }
+}
+impl RandStream for StandardNormal {
+    type Output = f64;
+
+    fn next<R: Rng>(&self, rng: &mut R) -> f64 {
         #[inline]
         fn pdf(x: f64) -> f64 {
             (-x*x/2.0).exp()
@@ -47,8 +55,8 @@ impl Rand for StandardNormal {
             let mut y = 0.0f64;
 
             while -2.0 * y < x * x {
-                let Open01(x_) = rng.gen::<Open01<f64>>();
-                let Open01(y_) = rng.gen::<Open01<f64>>();
+                let x_ = rng.gen::<f64, _>(Open01);
+                let y_ = rng.gen::<f64, _>(Open01);
 
                 x = x_.ln() / ziggurat_tables::ZIG_NORM_R;
                 y = y_.ln();
@@ -57,12 +65,12 @@ impl Rand for StandardNormal {
             if u < 0.0 { x - ziggurat_tables::ZIG_NORM_R } else { ziggurat_tables::ZIG_NORM_R - x }
         }
 
-        StandardNormal(ziggurat(
+        ziggurat(
             rng,
             true, // this is symmetric
             &ziggurat_tables::ZIG_NORM_X,
             &ziggurat_tables::ZIG_NORM_F,
-            pdf, zero_case))
+            pdf, zero_case)
     }
 }
 
@@ -107,7 +115,7 @@ impl Sample<f64> for Normal {
 }
 impl IndependentSample<f64> for Normal {
     fn ind_sample<R: Rng>(&self, rng: &mut R) -> f64 {
-        let StandardNormal(n) = rng.gen::<StandardNormal>();
+        let n = rng.gen::<f64, _>(StandardNormal);
         self.mean + self.std_dev * n
     }
 }

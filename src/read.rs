@@ -28,7 +28,7 @@ use Rng;
 ///
 /// let data = vec![1, 2, 3, 4, 5, 6, 7, 8];
 /// let mut rng = read::ReadRng::new(&data[..]);
-/// println!("{:x}", rng.gen::<u32>());
+/// println!("{:x}", rng.gen::<u32, _>(..));
 /// ```
 pub struct ReadRng<R> {
     reader: R

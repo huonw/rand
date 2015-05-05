@@ -11,7 +11,9 @@
 //! The ChaCha random number generator.
 
 use std::num::Wrapping as w;
-use {Rng, SeedableRng, Rand, w32};
+use std::ops::RangeFull;
+use std::marker::PhantomData;
+use {Rng, RngStream, SeedableRng, Rand, RandStream, w32};
 
 const KEY_WORDS    : usize =  8; // 8 words for the 256-bit key
 const STATE_WORDS  : usize = 16;
@@ -191,11 +193,18 @@ impl<'a> SeedableRng<&'a [u32]> for ChaChaRng {
     }
 }
 
-impl Rand for ChaChaRng {
-    fn rand<R: Rng>(other: &mut R) -> ChaChaRng {
+impl Rand<RangeFull> for ChaChaRng {
+    type Stream = RngStream<ChaChaRng>;
+    fn rand(_: RangeFull) -> Self::Stream {
+        RngStream { _x: PhantomData }
+    }
+}
+impl RandStream for RngStream<ChaChaRng> {
+    type Output = ChaChaRng;
+    fn next<R: Rng>(&self, other: &mut R) -> ChaChaRng {
         let mut key : [u32; KEY_WORDS] = [0; KEY_WORDS];
         for word in key.iter_mut() {
-            *word = other.gen();
+            *word = other.gen(..);
         }
         SeedableRng::from_seed(&key[..])
     }
@@ -210,7 +219,7 @@ mod test {
 
     #[test]
     fn test_rng_rand_seeded() {
-        let s = ::test::rng().gen_iter::<u32>().take(8).collect::<Vec<u32>>();
+        let s = ::test::rng().gen_iter::<u32, _>(..).take(8).collect::<Vec<u32>>();
         let mut ra: ChaChaRng = SeedableRng::from_seed(&s[..]);
         let mut rb: ChaChaRng = SeedableRng::from_seed(&s[..]);
         assert!(order::equals(ra.gen_ascii_chars().take(100),
@@ -228,7 +237,7 @@ mod test {
 
     #[test]
     fn test_rng_reseed() {
-        let s = ::test::rng().gen_iter::<u32>().take(8).collect::<Vec<u32>>();
+        let s = ::test::rng().gen_iter::<u32, _>(..).take(8).collect::<Vec<u32>>();
         let mut r: ChaChaRng = SeedableRng::from_seed(&s[..]);
         let string1: String = r.gen_ascii_chars().take(100).collect();
 
