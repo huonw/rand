@@ -240,7 +240,7 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/rand/")]
 
-#![cfg_attr(test, feature(core, test))]
+#![cfg_attr(test, feature(iter_order, test))]
 
 #[cfg(test)] #[macro_use] extern crate log;
 
@@ -436,7 +436,7 @@ pub trait Rng {
     /// let mut rng = thread_rng();
     /// let x = rng.gen_iter::<u32, _>(..).take(10).collect::<Vec<u32>>();
     /// println!("{:?}", x);
-    /// println!("{:?}", rng.gen_iter::<(f64, bool), _>((.., ..)).take(5)
+    /// println!("{:?}", rng.gen_iter((.., ..)).take(5)
     ///                     .collect::<Vec<(f64, bool)>>());
     /// ```
     fn gen_iter<'a, T: Rand<Dist>, Dist>(&'a mut self, dist: Dist) -> Generator<'a, T, Dist, Self>
