@@ -433,12 +433,12 @@ pub trait Rng {
     /// use rand::{thread_rng, Rng};
     ///
     /// let mut rng = thread_rng();
-    /// let x = rng.gen_iter::<u32, _>(..).take(10).collect::<Vec<u32>>();
+    /// let x = (&mut rng).gen_iter::<u32, _>(..).take(10).collect::<Vec<u32>>();
     /// println!("{:?}", x);
     /// println!("{:?}", rng.gen_iter((.., ..)).take(5)
     ///                     .collect::<Vec<(f64, bool)>>());
     /// ```
-    fn gen_iter<'a, T: Rand<Dist>, Dist>(&'a mut self, dist: Dist) -> Generator<'a, T, Dist, Self>
+    fn gen_iter<'a, T: Rand<Dist>, Dist>(self, dist: Dist) -> Generator<T, Dist, Self>
         where Self: Sized
     {
         Generator {
@@ -588,17 +588,17 @@ fn _assert_object_safe<R: Rng>(r: &R) {
 /// Iterator which will generate a stream of random items.
 ///
 /// This iterator is created via the `gen_iter` method on `Rng`.
-pub struct Generator<'a, T: Rand<Dist>, Dist, R:'a> {
-    rng: &'a mut R,
+pub struct Generator<T: Rand<Dist>, Dist, R> {
+    rng: R,
     stream: T::Stream,
     _marker: marker::PhantomData<fn() -> T>,
 }
 
-impl<'a, T: Rand<Dist>, Dist, R: Rng> Iterator for Generator<'a, T, Dist, R> {
+impl<T: Rand<Dist>, Dist, R: Rng> Iterator for Generator<T, Dist, R> {
     type Item = T;
 
     fn next(&mut self) -> Option<T> {
-        Some(self.stream.next(self.rng))
+        Some(self.stream.next(&mut self.rng))
     }
 }
 
@@ -1082,8 +1082,8 @@ mod test {
     #[test]
     fn test_gen_vec() {
         let mut r = thread_rng();
-        assert_eq!(r.gen_iter::<u8, _>(..).take(0).count(), 0);
-        assert_eq!(r.gen_iter::<u8, _>(..).take(10).count(), 10);
+        assert_eq!((&mut r).gen_iter::<u8, _>(..).take(0).count(), 0);
+        assert_eq!((&mut r).gen_iter::<u8, _>(..).take(10).count(), 10);
         assert_eq!(r.gen_iter::<f64, _>(..).take(16).count(), 16);
     }
 
