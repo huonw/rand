@@ -447,6 +447,16 @@ pub trait Rng {
         }
     }
 
+    /// Create a mutable reference to this self.
+    ///
+    /// This is literally just behaving as a postfix version of `&mut
+    /// self`, to allow method chaining more naturally.
+    fn by_ref(&mut self) -> &mut Self
+        where Self: Sized
+    {
+        self
+    }
+
     /// Return a bool with a 1 in n chance of true
     ///
     /// # Example
@@ -1016,8 +1026,8 @@ mod test {
     #[test]
     fn test_gen_vec() {
         let mut r = thread_rng();
-        assert_eq!((&mut r).gen_iter::<u8, _>(..).take(0).count(), 0);
-        assert_eq!((&mut r).gen_iter::<u8, _>(..).take(10).count(), 10);
+        assert_eq!(r.by_ref().gen_iter::<u8, _>(..).take(0).count(), 0);
+        assert_eq!(r.by_ref().gen_iter::<u8, _>(..).take(10).count(), 10);
         assert_eq!(r.gen_iter::<f64, _>(..).take(16).count(), 16);
     }
 
