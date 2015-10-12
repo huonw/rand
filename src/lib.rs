@@ -563,6 +563,24 @@ pub trait Rng {
     }
 }
 
+impl<'a, R: Rng + ?Sized> Rng for &'a mut R {
+    fn next_u32(&mut self) -> u32 {
+        (**self).next_u32()
+    }
+    fn next_u64(&mut self) -> u64 {
+        (**self).next_u64()
+    }
+    fn next_f32(&mut self) -> f32 {
+        (**self).next_f32()
+    }
+    fn next_f64(&mut self) -> f64 {
+        (**self).next_f64()
+    }
+    fn fill_bytes(&mut self, b: &mut [u8]) {
+        (**self).fill_bytes(b)
+    }
+}
+
 fn _assert_object_safe<R: Rng>(r: &R) {
     r as &Rng;
 }
