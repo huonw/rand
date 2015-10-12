@@ -214,8 +214,8 @@ mod test {
         let s = ::test::rng().gen_iter::<u32, _>(..).take(8).collect::<Vec<u32>>();
         let mut ra: ChaChaRng = SeedableRng::from_seed(&s[..]);
         let mut rb: ChaChaRng = SeedableRng::from_seed(&s[..]);
-        assert!(order::equals(ra.gen_ascii_chars().take(100),
-                              rb.gen_ascii_chars().take(100)));
+        assert!(order::equals(ra.gen_iter::<char, _>(::AsciiChars).take(100),
+                              rb.gen_iter::<char, _>(::AsciiChars).take(100)));
     }
 
     #[test]
@@ -223,19 +223,19 @@ mod test {
         let seed : &[_] = &[0,1,2,3,4,5,6,7];
         let mut ra: ChaChaRng = SeedableRng::from_seed(seed);
         let mut rb: ChaChaRng = SeedableRng::from_seed(seed);
-        assert!(order::equals(ra.gen_ascii_chars().take(100),
-                              rb.gen_ascii_chars().take(100)));
+        assert!(order::equals(ra.gen_iter::<char, _>(::AsciiChars).take(100),
+                              rb.gen_iter::<char, _>(::AsciiChars).take(100)));
     }
 
     #[test]
     fn test_rng_reseed() {
         let s = ::test::rng().gen_iter::<u32, _>(..).take(8).collect::<Vec<u32>>();
         let mut r: ChaChaRng = SeedableRng::from_seed(&s[..]);
-        let string1: String = r.gen_ascii_chars().take(100).collect();
+        let string1: String = r.by_ref().gen_iter::<char, _>(::AsciiChars).take(100).collect();
 
         r.reseed(&s);
 
-        let string2: String = r.gen_ascii_chars().take(100).collect();
+        let string2: String = r.by_ref().gen_iter::<char, _>(::AsciiChars).take(100).collect();
         assert_eq!(string1, string2);
     }
 

@@ -120,7 +120,7 @@ impl<S, R: SeedableRng<S>, Rsdr: Reseeder<R> + Default>
 ///     let mut rng = ReseedingRng::new(inner, 10, rsdr);
 ///
 ///     // this will repeat, because it gets reseeded very regularly.
-///     let s: String = rng.gen_ascii_chars().take(100).collect();
+///     let s: String = rng.gen_iter::<char, _>(rand::AsciiChars).take(100).collect();
 ///     println!("{}", s);
 /// }
 ///
@@ -192,18 +192,18 @@ mod test {
     fn test_rng_seeded() {
         let mut ra: MyRng = SeedableRng::from_seed((ReseedWithDefault, 2));
         let mut rb: MyRng = SeedableRng::from_seed((ReseedWithDefault, 2));
-        assert!(order::equals(ra.gen_ascii_chars().take(100),
-                              rb.gen_ascii_chars().take(100)));
+        assert!(order::equals(ra.gen_iter::<char, _>(::AsciiChars).take(100),
+                              rb.gen_iter::<char, _>(::AsciiChars).take(100)));
     }
 
     #[test]
     fn test_rng_reseed() {
         let mut r: MyRng = SeedableRng::from_seed((ReseedWithDefault, 3));
-        let string1: String = r.gen_ascii_chars().take(100).collect();
+        let string1: String = r.by_ref().gen_iter::<char, _>(::AsciiChars).take(100).collect();
 
         r.reseed((ReseedWithDefault, 3));
 
-        let string2: String = r.gen_ascii_chars().take(100).collect();
+        let string2: String = r.gen_iter::<char, _>(::AsciiChars).take(100).collect();
         assert_eq!(string1, string2);
     }
 

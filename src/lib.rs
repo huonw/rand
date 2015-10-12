@@ -473,22 +473,6 @@ pub trait Rng {
         n <= 1 || 0u32 == self.gen(0..n)
     }
 
-    /// Return an iterator of random characters from the set A-Z,a-z,0-9.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use rand::{thread_rng, Rng};
-    ///
-    /// let s: String = thread_rng().gen_ascii_chars().take(10).collect();
-    /// println!("{}", s);
-    /// ```
-    fn gen_ascii_chars<'a>(&'a mut self) -> AsciiGenerator<'a, Self>
-        where Self: Sized
-    {
-        AsciiGenerator { rng: self }
-    }
-
     /// Return a random element from `values`.
     ///
     /// Return `None` if `values` is empty.
@@ -596,22 +580,28 @@ impl<Dist> Splat<Dist> {
     }
 }
 
-/// Iterator which will continuously generate random ascii characters.
+/// A `RandStream` for `char`s, selecting uniformly at random from the
+/// alphanumeric ASCII characters.
 ///
-/// This iterator is created via the `gen_ascii_chars` method on `Rng`.
-pub struct AsciiGenerator<'a, R:'a> {
-    rng: &'a mut R,
-}
-
-impl<'a, R: Rng> Iterator for AsciiGenerator<'a, R> {
-    type Item = char;
-
-    fn next(&mut self) -> Option<char> {
+/// # Examples
+///
+/// ```rust
+/// use rand::Rng;
+/// let mut rng = rand::thread_rng();
+///
+/// // create a string of random characters, using an iterator
+/// let s = rng.gen_iter::<char,_>(rand::AsciiChars).take(15).collect::<String>();
+///
+/// println!("the random string is {}", s);
+/// ```
+pub struct AsciiChars;
+impl RandStream<char> for AsciiChars {
+    fn next<R: Rng>(&self, rng: &mut R) -> char {
         const GEN_ASCII_STR_CHARSET: &'static [u8] =
             b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
               abcdefghijklmnopqrstuvwxyz\
               0123456789";
-        Some(*self.rng.choose(GEN_ASCII_STR_CHARSET).unwrap() as char)
+        *rng.choose(GEN_ASCII_STR_CHARSET).unwrap() as char
     }
 }
 
@@ -1018,9 +1008,9 @@ mod test {
     #[test]
     fn test_gen_ascii_str() {
         let mut r = thread_rng();
-        assert_eq!(r.gen_ascii_chars().take(0).count(), 0);
-        assert_eq!(r.gen_ascii_chars().take(10).count(), 10);
-        assert_eq!(r.gen_ascii_chars().take(16).count(), 16);
+        assert_eq!(r.by_ref().gen_iter::<char, _>(::AsciiChars).take(0).count(), 0);
+        assert_eq!(r.by_ref().gen_iter::<char, _>(::AsciiChars).take(10).count(), 10);
+        assert_eq!(r.gen_iter::<char, _>(::AsciiChars).take(16).count(), 16);
     }
 
     #[test]
@@ -1112,19 +1102,19 @@ mod test {
         let s = thread_rng().gen_iter::<usize, _>(..).take(256).collect::<Vec<usize>>();
         let mut ra: StdRng = SeedableRng::from_seed(&s[..]);
         let mut rb: StdRng = SeedableRng::from_seed(&s[..]);
-        assert!(order::equals(ra.gen_ascii_chars().take(100),
-                              rb.gen_ascii_chars().take(100)));
+        assert!(order::equals(ra.gen_iter::<char, _>(::AsciiChars).take(100),
+                              rb.gen_iter::<char, _>(::AsciiChars).take(100)));
     }
 
     #[test]
     fn test_std_rng_reseed() {
         let s = thread_rng().gen_iter::<usize, _>(..).take(256).collect::<Vec<usize>>();
         let mut r: StdRng = SeedableRng::from_seed(&s[..]);
-        let string1 = r.gen_ascii_chars().take(100).collect::<String>();
+        let string1 = r.by_ref().gen_iter::<char, _>(::AsciiChars).take(100).collect::<String>();
 
         r.reseed(&s);
 
-        let string2 = r.gen_ascii_chars().take(100).collect::<String>();
+        let string2 = r.gen_iter::<char, _>(::AsciiChars).take(100).collect::<String>();
         assert_eq!(string1, string2);
     }
 
