@@ -10,8 +10,8 @@
 
 //! The normal and derived distributions.
 
-use {Rng, RandStream, Open01};
-use distributions::{ziggurat, ziggurat_tables};
+use rand::{Rng, RandStream, Open01};
+use {ziggurat, ziggurat_tables};
 
 /// A wrapper around an `f64` to generate N(0, 1) random numbers
 /// (a.k.a.  a standard normal, or Gaussian).
@@ -74,13 +74,17 @@ impl RandStream<f64> for StandardNormal {
 /// # Example
 ///
 /// ```rust
+/// extern crate dists;
+/// extern crate rand;
+/// # fn main() {
 /// use rand::Rng;
-/// use rand::distributions::Normal;
+/// use dists::Normal;
 ///
 /// // mean 2, standard deviation 3
 /// let normal = Normal::new(2.0, 3.0);
 /// let v: f64 = rand::thread_rng().gen(normal);
 /// println!("{} is from a N(2, 9) distribution", v)
+/// # }
 /// ```
 #[derive(Clone, Copy)]
 pub struct Normal {
@@ -119,13 +123,17 @@ impl RandStream<f64> for Normal {
 /// # Example
 ///
 /// ```rust
+/// extern crate dists;
+/// extern crate rand;
+/// # fn main() {
 /// use rand::Rng;
-/// use rand::distributions::LogNormal;
+/// use dists::LogNormal;
 ///
 /// // mean 2, standard deviation 3
 /// let log_normal = LogNormal::new(2.0, 3.0);
 /// let v: f64 = rand::thread_rng().gen(log_normal);
 /// println!("{} is from an ln N(2, 9) distribution", v)
+/// # }
 /// ```
 #[derive(Clone, Copy)]
 pub struct LogNormal {
@@ -152,7 +160,7 @@ impl RandStream<f64> for LogNormal {
 
 #[cfg(test)]
 mod tests {
-    use RandStream;
+    use rand::RandStream;
     use super::{Normal, LogNormal};
 
     #[test]
@@ -191,7 +199,7 @@ mod bench {
     use self::test::Bencher;
     use std::mem::size_of;
     use super::Normal;
-    use RandStream;
+    use rand::RandStream;
 
     #[bench]
     fn rand_normal(b: &mut Bencher) {

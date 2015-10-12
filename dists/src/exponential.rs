@@ -10,13 +10,13 @@
 
 //! The exponential distribution.
 
-use {Rng, RandStream};
-use distributions::{ziggurat, ziggurat_tables};
+use rand::{Rng, RandStream};
+use {ziggurat, ziggurat_tables};
 
 /// A wrapper around an `f64` to generate Exp(1) random numbers.
 ///
 /// See `Exp` for the general exponential distribution.Note that this
- // has to be unwrapped before use as an `f64` (using either
+/// has to be unwrapped before use as an `f64` (using either
 /// `*` or `mem::transmute` is safe).
 ///
 /// Implemented via the ZIGNOR variant[1] of the Ziggurat method. The
@@ -58,12 +58,16 @@ impl RandStream<f64> for Exp1 {
 /// # Example
 ///
 /// ```rust
+/// extern crate dists;
+/// extern crate rand;
+/// # fn main() {
 /// use rand::Rng;
-/// use rand::distributions::Exp;
+/// use dists::Exp;
 ///
 /// let exp = Exp::new(2.0);
 /// let v: f64 = rand::thread_rng().gen(exp);
 /// println!("{} is from a Exp(2) distribution", v);
+/// # }
 /// ```
 #[derive(Clone, Copy)]
 pub struct Exp {
@@ -89,7 +93,7 @@ impl RandStream<f64> for Exp {
 
 #[cfg(test)]
 mod test {
-    use RandStream;
+    use rand::RandStream;
     use super::Exp;
 
     #[test]
@@ -116,7 +120,7 @@ mod test {
 mod bench {
     extern crate test;
 
-    use RandStream;
+    use rand::RandStream;
     use self::test::Bencher;
     use std::mem::size_of;
     use super::Exp;

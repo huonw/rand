@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![cfg_attr(test, feature(test))]
+
 //! Sampling from random distributions.
 //!
 //! This is a generalization of `Rand` to allow parameters to control the
@@ -17,14 +19,15 @@
 //! internally. The `IndependentSample` trait is for generating values
 //! that do not need to record state.
 
-use {Rng, RandStream};
+extern crate rand;
+use rand::{Rng, RandStream};
 
-pub use self::range::Range;
+//pub use self::range::Range;
 pub use self::gamma::{Gamma, ChiSquared, FisherF, StudentT};
 pub use self::normal::{Normal, LogNormal};
 pub use self::exponential::Exp;
 
-pub mod range;
+//pub mod range;
 pub mod gamma;
 pub mod normal;
 pub mod exponential;
@@ -52,8 +55,11 @@ pub struct Weighted<T> {
 /// # Example
 ///
 /// ```rust
+/// extern crate dists;
+/// extern crate rand;
+/// # fn main() {
 /// use rand::Rng;
-/// use rand::distributions::{Weighted, WeightedChoice, W};
+/// use dists::{Weighted, WeightedChoice, W};
 ///
 /// let mut items = vec!(Weighted { weight: 2, item: 'a' },
 ///                      Weighted { weight: 4, item: 'b' },
@@ -64,10 +70,11 @@ pub struct Weighted<T> {
 ///      // on average prints 'a' 4 times, 'b' 8 and 'c' twice.
 ///      println!("{}", x);
 /// }
+/// # }
 /// ```
 pub struct WeightedChoice<'a, T:'a> {
     items: &'a mut [Weighted<T>],
-    weight_range: Range<u32>
+    weight_range: rand::Range<u32>
 }
 
 impl<'a, T: Clone> WeightedChoice<'a, T> {
@@ -101,7 +108,7 @@ impl<'a, T: Clone> WeightedChoice<'a, T> {
             items: items,
             // we're likely to be generating numbers in this range
             // relatively often, so might as well cache it
-            weight_range: Range::new(0, running_total)
+            weight_range: rand::Range::new(0, running_total)
         }
     }
 }
@@ -217,10 +224,20 @@ fn ziggurat<R: Rng, P, Z>(
 }
 
 #[cfg(test)]
-mod tests {
+const RAND_BENCH_N: u64 = 100;
 
-    use {Rng, RandStream};
+#[cfg(test)]
+mod test {
+    use rand::{self, Rng, RandStream};
     use super::{WeightedChoice, Weighted};
+
+    pub fn rng() -> rand::ThreadRng {
+        rand::thread_rng()
+    }
+
+    pub fn weak_rng() -> rand::XorShiftRng {
+        rand::random(..)
+    }
 
     // 0, 1, 2, 3, ...
     struct CountingRng { i: u32 }

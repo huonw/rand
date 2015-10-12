@@ -16,7 +16,7 @@
 //! suffice, but sometimes an annotation is required, e.g.
 //! `rand::random::<f64>()`.
 //!
-//! See the `distributions` submodule for sampling random numbers from
+//! See the `dists` crate for sampling random numbers from
 //! distributions like normal and exponential.
 //!
 //! # Usage
@@ -151,8 +151,7 @@
 //! [Monty Hall Problem]: http://en.wikipedia.org/wiki/Monty_Hall_problem
 //!
 //! ```
-//! use rand::{Rng, RandStream};
-//! use rand::distributions::Range;
+//! use rand::{Rng, RandStream, Range};
 //!
 //! struct SimulationResult {
 //!     win: bool,
@@ -262,15 +261,15 @@ use IsaacRng as IsaacWordRng;
 #[cfg(target_pointer_width = "64")]
 use Isaac64Rng as IsaacWordRng;
 
-use distributions::range::SampleRange;
-
-pub mod distributions;
+use range::SampleRange;
 pub mod isaac;
 pub mod chacha;
 pub mod reseeding;
 mod rand_impls;
 pub mod os;
 pub mod read;
+pub mod range;
+pub use range::Range;
 
 #[allow(bad_style)]
 type w64 = w<u64>;
@@ -452,7 +451,7 @@ pub trait Rng {
     /// Generate a random value in the range [`low`, `high`).
     ///
     /// This is a convenience wrapper around
-    /// `distributions::Range`. If this function will be called
+    /// `Range`. If this function will be called
     /// repeatedly with the same arguments, one should use `Range`, as
     /// that will amortize the computations that allow for perfect
     /// uniformity, as they only happen on initialization.

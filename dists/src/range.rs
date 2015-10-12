@@ -14,7 +14,7 @@
 
 use std::num::Wrapping as w;
 
-use {Rng, Rand, RandStream};
+use rand::{Rng, Rand, RandStream};
 /// Sample values uniformly between two bounds.
 ///
 /// This gives a uniform distribution (assuming the RNG used to sample

@@ -15,7 +15,7 @@
 use self::GammaRepr::*;
 use self::ChiSquaredRepr::*;
 
-use {Rng, Open01, RandStream};
+use rand::{Rng, Open01, RandStream};
 use super::normal::StandardNormal;
 use super::{Exp};
 
@@ -38,12 +38,16 @@ use super::{Exp};
 /// # Example
 ///
 /// ```rust
+/// extern crate dists;
+/// extern crate rand;
+/// # fn main() {
 /// use rand::Rng;
-/// use rand::distributions::Gamma;
+/// use dists::Gamma;
 ///
 /// let gamma = Gamma::new(2.0, 5.0);
 /// let v: f64 = rand::thread_rng().gen(gamma);
 /// println!("{} is from a Gamma(2, 5) distribution", v);
+/// # }
 /// ```
 ///
 /// [1]: George Marsaglia and Wai Wan Tsang. 2000. "A Simple Method
@@ -179,12 +183,16 @@ impl GammaLargeShape {
 /// # Example
 ///
 /// ```rust
+/// extern crate dists;
+/// extern crate rand;
+/// # fn main() {
 /// use rand::Rng;
-/// use rand::distributions::ChiSquared;
+/// use dists::ChiSquared;
 ///
 /// let chi = ChiSquared::new(11.0);
 /// let v: f64 = rand::thread_rng().gen(chi);
 /// println!("{} is from a χ²(11) distribution", v)
+/// # }
 /// ```
 #[derive(Clone, Copy)]
 pub struct ChiSquared {
@@ -235,12 +243,16 @@ impl RandStream<f64> for ChiSquared {
 /// # Example
 ///
 /// ```rust
+/// extern crate dists;
+/// extern crate rand;
+/// # fn main() {
 /// use rand::Rng;
-/// use rand::distributions::FisherF;
+/// use dists::FisherF;
 ///
 /// let f = FisherF::new(2.0, 32.0);
 /// let v: f64 = rand::thread_rng().gen(f);
 /// println!("{} is from an F(2, 32) distribution", v)
+/// # }
 /// ```
 #[derive(Clone, Copy)]
 pub struct FisherF {
@@ -277,12 +289,16 @@ impl RandStream<f64> for FisherF {
 /// # Example
 ///
 /// ```rust
+/// extern crate dists;
+/// extern crate rand;
+/// # fn main() {
 /// use rand::Rng;
-/// use rand::distributions::StudentT;
+/// use dists::StudentT;
 ///
 /// let t = StudentT::new(11.0);
 /// let v: f64 = rand::thread_rng().gen(t);
 /// println!("{} is from a t(11) distribution", v)
+/// # }
 /// ```
 #[derive(Clone, Copy)]
 pub struct StudentT {
@@ -310,7 +326,7 @@ impl RandStream<f64> for StudentT {
 
 #[cfg(test)]
 mod test {
-    use RandStream;
+    use rand::RandStream;
     use super::{ChiSquared, StudentT, FisherF};
 
     #[test]
@@ -365,7 +381,7 @@ mod test {
 #[cfg(test)]
 mod bench {
     extern crate test;
-    use RandStream;
+    use rand::RandStream;
     use self::test::Bencher;
     use std::mem::size_of;
     use super::Gamma;
