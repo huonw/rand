@@ -19,6 +19,114 @@
 //! See the `dists` crate for sampling random numbers from
 //! distributions like normal and exponential.
 //!
+//! # Proposed Changes
+//!
+//! (Pretty much every mention of "removed" can be replaced with
+//! "deprecated", if we desire and have that functionality for
+//! external crates in time.)
+//!
+//! ## Rand/RandStream
+//!
+//! The major proposed change is adding a parameter to `Rand` and
+//! adding the extra `RandStream` trait. These are designed to work
+//! together to allow generating non-trivial values, and generating
+//! values in non-trivial ways, by passing in "parameters" to tweak
+//! how they're generated, e.g. generating a `u8` between 5 and 16,
+//! instead of from 0 to 256. This results in an extra parameter to
+//! functions like `random`, `gen` and `gen_iter`, but allows
+//! absorbing other functions (or not creating new ones) like
+//! `gen_range` and `gen_ascii_chars`. The convention is to use
+//! `RangeFull` (i.e. `..`) for when there's no useful parameters, or
+//! for a sensible default for a type. Example:
+//!
+//! ```rust
+//! use rand::{thread_rng, Rng};
+//!
+//! let mut rng = thread_rng();
+//! let x: u32 = rng.gen(..);
+//! println!("{}", x);
+//!
+//! let y: u32 = rng.gen_iter(10..20).map(|x: u32| x * 2).take(10).fold(0, |a, b| a + b);
+//! println!("{}", y);
+//! ```
+//!
+//! More examples below (the Monte Carlo one below gives a neat demo
+//! of the interaction with tuples) and on the
+//! `Rng::gen`/`Rng::gen_iter`/`random` functions themselves. These
+//! can also be extended in external crates e.g. I moved the
+//! `distributions` submodule to an external `dists` crate, which
+//! defines `RandStream`s for generating things (mainly `f64`) with
+//! fancy probabilities, e.g.
+//!
+//! ```rust
+//! extern crate dists;
+//! extern crate rand;
+//! use rand::Rng;
+//! # fn main() {
+//!
+//! let mut rng = rand::thread_rng();
+//! let x: f64 = rng.gen(dists::Normal::new(2.0, 3.0));
+//! println!("{}", x);
+//! # }
+//! ```
+//!
+//! See [dists](../dists/index.html) for more examples.  (These of course work with `gen_iter` etc too.)
+//!
+//! ## gen_ascii_chars
+//!
+//! The old `rng.gen_ascii_chars(): Iterator<Item = char>` can be
+//! replaced by defining a type `AsciiChars` that implements
+//! `RandStream<char>`, which can then be used in `gen` and
+//! `gen_iter`. This does come at a little syntactic cost, because
+//! inference is apparently not quite strong enough. E.g. creating a
+//! random alphanumeric string:
+//!
+//! ```rust,ignore
+//! // old:
+//! rng.gen_ascii_chars().take(10).collect::<String>()
+//! // new:
+//! rng.gen_iter::<char,_>(AsciiChars).take(10).collect::<String>()
+//! ```
+//!
+//! However, the new
+//! approach generalises better (e.g. what if someone wants alphabetic
+//! only, or wants to include punctuation or more non-ASCII chars or
+//! something).
+//!
+//! ## Move distributions to a new crate
+//!
+//! `rand` will be focused on raw bit generation and uniformly
+//! distributed values, defining traits relating to RNGs, and the
+//! handling for ranges like `x..y` with primitives. The distribution
+//! functionality (normal, exponential, gamma, etc) will live in its
+//! own crate. This makes it more reasonable to expand that with
+//! any/every distribution (IMO) since the new crate is single
+//! purpose, and so won't be "contamining" users of `rand` who don't
+//! need it.
+//!
+//! ## Changes to RNGs
+//!
+//! The Isaac*Rngs will be replaced with ChaChaRng (which is more
+//! trusted). I'm thinking that Isaac can just be removed, but I
+//! haven't fully decided yet.
+//!
+//! There's been quite a few requests/mentions of replacing XorShift,
+//! or adding to it, with a [PCG](http://www.pcg-random.org/)
+//! generator.
+//!
+//! ## Desired lang/lib features
+//!
+//! The `...` inclusive ranges is very desirable, to handle
+//! `char`. `'a'..'z'` doesn't include `z` and so probably isn't want
+//! one wants, so `char` will only implement
+//! `Rand<RangeInclusive<char>>`, not
+//! `Rand<Range<char>>`. ([#28237](https://github.com/rust-lang/rust/issues/28237).)
+//!
+//! Essentially all type hints to `gen` and `gen_iter` are of the form
+//! `::<T, _>`, so being able to just leave off the `_` might be
+//! nice. ([RFC 1196](https://github.com/rust-lang/rfcs/pull/1196).)
+//!
+//!
 //! # Usage
 //!
 //! This crate is [on crates.io](https://crates.io/crates/rand) and can be
@@ -26,7 +134,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! rand = "0.3"
+//! rand = "0.4"
 //! ```
 //!
 //! and this to your crate root:
