@@ -261,7 +261,6 @@ use IsaacRng as IsaacWordRng;
 #[cfg(target_pointer_width = "64")]
 use Isaac64Rng as IsaacWordRng;
 
-use range::SampleRange;
 pub mod isaac;
 pub mod chacha;
 pub mod reseeding;
@@ -448,38 +447,6 @@ pub trait Rng {
         }
     }
 
-    /// Generate a random value in the range [`low`, `high`).
-    ///
-    /// This is a convenience wrapper around
-    /// `Range`. If this function will be called
-    /// repeatedly with the same arguments, one should use `Range`, as
-    /// that will amortize the computations that allow for perfect
-    /// uniformity, as they only happen on initialization.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `low >= high`.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use rand::{thread_rng, Rng};
-    ///
-    /// let mut rng = thread_rng();
-    /// let n: u32 = rng.gen_range(0, 10);
-    /// println!("{}", n);
-    /// let m: f64 = rng.gen_range(-40.0f64, 1.3e5f64);
-    /// println!("{}", m);
-    /// ```
-    fn gen_range<T: PartialOrd + SampleRange>(&mut self, low: T, high: T) -> T
-        where Self: Sized
-    {
-        assert!(low < high, "Rng.gen_range called with low >= high");
-        // self.gen(low..high)
-        low
-
-    }
-
     /// Return a bool with a 1 in n chance of true
     ///
     /// # Example
@@ -493,7 +460,7 @@ pub trait Rng {
     fn gen_weighted_bool(&mut self, n: u32) -> bool
         where Self: Sized
     {
-        n <= 1 || self.gen_range(0, n) == 0
+        n <= 1 || 0u32 == self.gen(0..n)
     }
 
     /// Return an iterator of random characters from the set A-Z,a-z,0-9.
@@ -532,7 +499,7 @@ pub trait Rng {
         if values.is_empty() {
             None
         } else {
-            Some(&values[self.gen_range(0, values.len())])
+            Some(&values[self.gen::<usize, _>(0..values.len())])
         }
     }
 
@@ -558,7 +525,7 @@ pub trait Rng {
             // invariant: elements with index >= i have been locked in place.
             i -= 1;
             // lock element i in place.
-            values.swap(i, self.gen_range(0, i + 1));
+            values.swap(i, self.gen(0..i + 1));
         }
     }
 }
@@ -963,7 +930,7 @@ pub fn sample<T, I: Iterator<Item=T>, R: Rng>(rng: &mut R,
                                          amount: usize) -> Vec<T> {
     let mut reservoir: Vec<T> = iter.by_ref().take(amount).collect();
     for (i, elem) in iter.enumerate() {
-        let k = rng.gen_range(0, i + 1 + amount);
+        let k: usize = rng.gen(0..i + 1 + amount);
         if k < amount {
             reservoir[k] = elem;
         }
@@ -1021,39 +988,6 @@ mod test {
                 }
             }
         }
-    }
-
-    #[test]
-    fn test_gen_range() {
-        let mut r = thread_rng();
-        for _ in 0..1000 {
-            let a = r.gen_range(-3, 42);
-            assert!(a >= -3 && a < 42);
-            assert_eq!(r.gen_range(0, 1), 0);
-            assert_eq!(r.gen_range(-12, -11), -12);
-        }
-
-        for _ in 0..1000 {
-            let a = r.gen_range(10, 42);
-            assert!(a >= 10 && a < 42);
-            assert_eq!(r.gen_range(0, 1), 0);
-            assert_eq!(r.gen_range(3_000_000, 3_000_001), 3_000_000);
-        }
-
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_gen_range_panic_int() {
-        let mut r = thread_rng();
-        r.gen_range(5, -2);
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_gen_range_panic_usize() {
-        let mut r = thread_rng();
-        r.gen_range(5, 2);
     }
 
     #[test]
@@ -1124,7 +1058,7 @@ mod test {
         r.shuffle(&mut v);
         let b: &[_] = &[1, 1, 1];
         assert_eq!(v, b);
-        assert_eq!(r.gen_range(0, 1), 0);
+        assert_eq!(r.gen::<i32, _>(0..1), 0);
     }
 
     #[test]
